@@ -1,0 +1,42 @@
+{
+  "profile": {
+    "name": "Your Name",
+    "title": "Full-stack developer specializing in the modern JavaScript stack, with startup and open-source experience. Very eager to learn, strongly communicative, self-driven to solve and create.",
+    "location": "Your City, Your Country",
+    "email": "your-email@example.com",
+    "skills": "TypeScript, Node.js, React.js, SQL, Electron",
+    "interests": "Type systems, compilers, codegen, OpenAPI"
+  },
+  "links": {
+    "work": [
+      {
+        "id": "1",
+        "name": "Your Company",
+        "url": "https://your-company.com",
+        "icon": "🔗"
+      },
+      {
+        "id": "2",
+        "name": "Your Project",
+        "url": "https://your-project.com",
+        "icon": "📊"
+      }
+    ],
+    "presence": [
+      {
+        "id": "3",
+        "name": "GitHub",
+        "url": "https://github.com/yourusername",
+        "icon": "🐙"
+      },
+      {
+        "id": "4",
+        "name": "LinkedIn",
+        "url": "https://linkedin.com/in/yourprofile",
+        "icon": "💼"
+      }
+    ]
+  },
+  "notes": [],
+  "learning": []
+}
