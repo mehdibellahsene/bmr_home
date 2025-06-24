@@ -19,8 +19,10 @@ export async function GET() {
   try {
     console.log('Fetching learning items...');
     const db = PortfolioDatabase.getInstance();
+    // Clear cache to ensure fresh data
+    db.clearCache();
     const data = await db.getData();
-    const learning = data.learning || [];
+    const learning = Array.isArray(data.learning) ? data.learning : [];
     console.log(`Found ${learning.length} learning items`);
     return NextResponse.json(learning);
   } catch (error) {

@@ -22,8 +22,7 @@ interface Learning {
   createdAt: string;
 }
 
-export default function AdminDashboard() {
-  const [notes, setNotes] = useState<Note[]>([]);
+export default function AdminDashboard() {  const [notes, setNotes] = useState<Note[]>([]);
   const [learning, setLearning] = useState<Learning[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -149,6 +148,101 @@ export default function AdminDashboard() {
       return () => clearTimeout(timer);
     }
   }, [error, retryCount, mounted, fetchData]);
+    if (!mounted) return;
+    
+    setLoading(true);
+    setError(null);
+    
+    console.log('Starting data fetch...');
+    
+    try {
+      // Add timestamp to prevent caching issues
+      const timestamp = Date.now();
+      
+      // Fetch both with individual error handling
+      const notesPromise = fetch(`/api/notes?t=${timestamp}`, {
+        method: 'GET',
+        headers: {
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache',
+        },
+      }).then(async (res) => {
+        console.log('Notes response status:', res.status);
+        if (res.ok) {
+          const data = await res.json();
+          console.log('Notes data received:', data);
+          return Array.isArray(data) ? data : [];
+        } else {
+          console.error('Failed to fetch notes:', res.status, res.statusText);
+          throw new Error(`Failed to fetch notes: ${res.status}`);
+        }
+      }).catch((error) => {
+        console.error('Error fetching notes:', error);
+        throw error;
+      });
+
+      const learningPromise = fetch(`/api/learning?t=${timestamp}`, {
+        method: 'GET',
+        headers: {
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache',
+        },
+      }).then(async (res) => {
+        console.log('Learning response status:', res.status);
+        if (res.ok) {
+          const data = await res.json();
+          console.log('Learning data received:', data);
+          return Array.isArray(data) ? data : [];
+        } else {
+          console.error('Failed to fetch learning:', res.status, res.statusText);
+          throw new Error(`Failed to fetch learning: ${res.status}`);
+        }
+      }).catch((error) => {
+        console.error('Error fetching learning:', error);
+        throw error;
+      });
+
+      const results = await Promise.allSettled([notesPromise, learningPromise]);
+      
+      console.log('Fetch results:', results);
+      
+      // Handle notes result
+      if (results[0].status === 'fulfilled') {
+        console.log('Setting notes:', results[0].value);
+        setNotes(results[0].value);
+      } else {
+        console.error('Notes fetch failed:', results[0].reason);
+        setNotes([]);
+      }
+      
+      // Handle learning result
+      if (results[1].status === 'fulfilled') {
+        console.log('Setting learning:', results[1].value);
+        setLearning(results[1].value);
+      } else {
+        console.error('Learning fetch failed:', results[1].reason);
+        setLearning([]);
+      }
+      
+      // Set error if both failed
+      if (results[0].status === 'rejected' && results[1].status === 'rejected') {
+        setError('Failed to load data. Please try again.');
+      } else {
+        // Clear error if at least one succeeded
+        setError(null);
+        setRetryCount(0);
+      }
+      
+    } catch (error) {
+      console.error('Failed to fetch data:', error);
+      setError('Failed to load data. Please try again.');
+      // Set empty arrays as fallback
+      setNotes([]);
+      setLearning([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [mounted]);
 
   const handleLogout = async () => {
     try {
@@ -157,14 +251,7 @@ export default function AdminDashboard() {
     } catch (error) {
       console.error('Logout error:', error);
     }
-  };
-
-  // Don't render anything until mounted to prevent hydration issues
-  if (!mounted) {
-    return null;
-  }
-
-  if (loading) {
+  };  if (loading) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
         <div className="flex flex-col items-center space-y-4">
@@ -191,9 +278,7 @@ export default function AdminDashboard() {
         </div>
       </div>
     );
-  }
-
-  return (
+  }return (
     <div className="min-h-screen bg-black">
       {/* Header */}
       <header className="bg-gray-900 border-b border-gray-800 shadow-xl">
@@ -202,8 +287,7 @@ export default function AdminDashboard() {
             <div>
               <h1 className="text-3xl font-bold text-white">Admin Dashboard</h1>
               <p className="text-gray-400 mt-1">Manage your content and profile</p>
-            </div>
-            <div className="flex space-x-4">
+            </div>            <div className="flex space-x-4">
               <button
                 onClick={fetchData}
                 disabled={loading}

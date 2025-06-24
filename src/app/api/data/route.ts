@@ -7,11 +7,44 @@ function isAuthenticated(request: NextRequest): boolean {
   return authCookie?.value === 'authenticated';
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    // Check if this is a validation request
+    const url = new URL(request.url);
+    const isValidation = url.searchParams.has('validate');
+    
     const db = PortfolioDatabase.getInstance();
+    
+    if (isValidation) {
+      // Clear cache to ensure fresh data for validation
+      db.clearCache();
+      
+      const data = await db.getData();
+      
+      const validation = {
+        status: 'success',
+        timestamp: new Date().toISOString(),
+        data: {
+          hasNotes: Array.isArray(data.notes),
+          notesCount: Array.isArray(data.notes) ? data.notes.length : 0,
+          hasLearning: Array.isArray(data.learning),
+          learningCount: Array.isArray(data.learning) ? data.learning.length : 0,
+          hasProfile: !!data.profile,
+          hasLinks: !!data.links,
+        },
+        rawData: {
+          notes: data.notes || [],
+          learning: data.learning || [],
+        }
+      };
+      
+      console.log('Data validation result:', validation);
+      return NextResponse.json(validation);
+    }
+    
+    // Regular data request
     const data = await db.getData();
-      // Remove admin credentials from response
+    // Remove admin credentials from response
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { admin: _admin, ...publicData } = data as unknown as Record<string, unknown>;
     return NextResponse.json(publicData);

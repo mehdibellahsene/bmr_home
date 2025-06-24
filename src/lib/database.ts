@@ -85,18 +85,39 @@ export class PortfolioDatabase {
       PortfolioDatabase.instance = new PortfolioDatabase();
     }
     return PortfolioDatabase.instance;
-  }
-  async getData(): Promise<PortfolioData> {
+  }  async getData(): Promise<PortfolioData> {
     // Always try to read fresh data from file system first
     if (typeof window === 'undefined') {
       try {
         const fs = await import('fs');
         const path = await import('path');
         const dataPath = path.join(process.cwd(), 'data', 'portfolio.json');
+        
+        // Check if file exists
+        if (!fs.existsSync(dataPath)) {
+          console.warn('Portfolio data file does not exist, creating with default data');
+          fs.writeFileSync(dataPath, JSON.stringify(defaultData, null, 2));
+          this.data = { ...defaultData };
+          return this.data;
+        }
+        
         const fileContents = fs.readFileSync(dataPath, 'utf8');
         const parsedData = JSON.parse(fileContents) as PortfolioData;
-        this.data = parsedData; // Update cache
-        return parsedData;
+        
+        // Ensure required fields exist
+        const mergedData = {
+          ...defaultData,
+          ...parsedData,
+          notes: Array.isArray(parsedData.notes) ? parsedData.notes : [],
+          learning: Array.isArray(parsedData.learning) ? parsedData.learning : [],
+        };
+        
+        this.data = mergedData; // Update cache
+        console.log('Data loaded from file system:', {
+          notesCount: mergedData.notes.length,
+          learningCount: mergedData.learning.length
+        });
+        return mergedData;
       } catch (error) {
         console.warn('Could not read from file system:', error);
         // If file read fails but we have cached data, use it
