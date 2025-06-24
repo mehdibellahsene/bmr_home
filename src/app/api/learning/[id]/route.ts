@@ -20,11 +20,12 @@ function checkAuth(request: NextRequest) {
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const data = readData();
-    const learning = data.learning?.find((l: Record<string, unknown>) => l.id === params.id);
+    const learning = data.learning?.find((l: Record<string, unknown>) => l.id === id);
     
     if (!learning) {
       return NextResponse.json({ error: 'Learning item not found' }, { status: 404 });
@@ -39,17 +40,18 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   if (!checkAuth(request)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
   try {
+    const { id } = await params;
     const body = await request.json();
     const data = readData();
     
-    const learningIndex = data.learning?.findIndex((l: Record<string, unknown>) => l.id === params.id);
+    const learningIndex = data.learning?.findIndex((l: Record<string, unknown>) => l.id === id);
     
     if (learningIndex === -1 || learningIndex === undefined) {
       return NextResponse.json({ error: 'Learning item not found' }, { status: 404 });
@@ -75,15 +77,16 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   if (!checkAuth(request)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
   try {
+    const { id } = await params;
     const data = readData();
-    const learningIndex = data.learning?.findIndex((l: Record<string, unknown>) => l.id === params.id);
+    const learningIndex = data.learning?.findIndex((l: Record<string, unknown>) => l.id === id);
     
     if (learningIndex === -1 || learningIndex === undefined) {
       return NextResponse.json({ error: 'Learning item not found' }, { status: 404 });

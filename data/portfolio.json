@@ -5,7 +5,8 @@
     "location": "Your City, Your Country",
     "email": "your-email@example.com",
     "skills": "TypeScript, Node.js, React.js, SQL, Electron",
-    "interests": "Type systems, compilers, codegen, OpenAPI"
+    "interests": "Type systems, compilers, codegen, OpenAPI",
+    "homeImage": ""
   },
   "links": {
     "work": [

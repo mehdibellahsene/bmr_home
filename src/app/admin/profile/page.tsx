@@ -10,6 +10,7 @@ interface Profile {
   email: string;
   skills: string;
   interests: string;
+  homeImage: string;
 }
 
 interface LinkItem {
@@ -24,14 +25,14 @@ interface Links {
   presence: LinkItem[];
 }
 
-export default function AdminProfile() {
-  const [profile, setProfile] = useState<Profile>({
+export default function AdminProfile() {  const [profile, setProfile] = useState<Profile>({
     name: '',
     title: '',
     location: '',
     email: '',
     skills: '',
-    interests: ''
+    interests: '',
+    homeImage: ''
   });
   const [links, setLinks] = useState<Links>({ work: [], presence: [] });
   const [loading, setLoading] = useState(true);
@@ -187,9 +188,7 @@ export default function AdminProfile() {
                     className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-gray-500"
                     required
                   />
-                </div>
-
-                <div>
+                </div>                <div>
                   <label className="block text-sm font-medium text-gray-300 mb-2">
                     Email
                   </label>
@@ -200,6 +199,22 @@ export default function AdminProfile() {
                     className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-gray-500"
                     required
                   />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                    Home Image URL
+                  </label>
+                  <input
+                    type="url"
+                    value={profile.homeImage}
+                    onChange={(e) => setProfile(prev => ({ ...prev, homeImage: e.target.value }))}
+                    className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-gray-500"
+                    placeholder="https://example.com/your-image.jpg"
+                  />
+                  <p className="text-xs text-gray-400 mt-1">
+                    Optional: URL to your profile image. Leave empty to use the default gradient avatar.
+                  </p>
                 </div>
 
                 <div>

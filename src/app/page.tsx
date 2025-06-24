@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import fs from 'fs';
 import path from 'path';
 
@@ -10,6 +11,7 @@ interface PortfolioData {
     email: string;
     skills: string;
     interests: string;
+    homeImage?: string;
   };
   links: {
     work: Array<{ id: string; name: string; url: string; icon: string }>;
@@ -26,8 +28,7 @@ async function getPortfolioData(): Promise<PortfolioData> {
     return {
       profile: data.profile,
       links: data.links
-    };
-  } catch (error) {
+    };  } catch (error) {
     console.error('Error reading portfolio data:', error);
     // Return fallback data
     return {
@@ -37,7 +38,8 @@ async function getPortfolioData(): Promise<PortfolioData> {
         location: "Your City, Your Country",
         email: "your-email@example.com",
         skills: "TypeScript, Node.js, React.js, SQL, Electron",
-        interests: "Type systems, compilers, codegen, OpenAPI"
+        interests: "Type systems, compilers, codegen, OpenAPI",
+        homeImage: ""
       },
       links: {
         work: [],
@@ -122,11 +124,26 @@ export default async function Home() {
         )}</aside>      {/* Main Content */}
       <main className="flex-1 flex items-center justify-center bg-black">
         <div className="max-w-4xl w-full mx-auto px-8">          {/* Profile Card */}
-          <div className="bg-gray-900 rounded-2xl p-8 shadow-2xl border border-gray-800">
-            <div className="text-left">
-              {/* Profile Avatar */}
-              <div className="w-32 h-32 bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-full mb-6 flex items-center justify-center shadow-lg">
-                <div className="w-28 h-28 bg-emerald-400 rounded-full opacity-80"></div>
+          <div className="bg-gray-900 rounded-2xl p-8 shadow-2xl border border-gray-800">            <div className="text-left">
+              {/* Profile Avatar */}              <div className="w-32 h-32 rounded-full mb-6 flex items-center justify-center shadow-lg overflow-hidden">
+                {data.profile.homeImage ? (
+                  <Image 
+                    src={data.profile.homeImage} 
+                    alt={data.profile.name}
+                    width={128}
+                    height={128}
+                    className="w-full h-full object-cover rounded-full"
+                    onError={(e) => {
+                      // Fallback to default gradient if image fails to load
+                      e.currentTarget.style.display = 'none';
+                      e.currentTarget.parentElement!.innerHTML = '<div class="w-full h-full bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-full flex items-center justify-center"><div class="w-28 h-28 bg-emerald-400 rounded-full opacity-80"></div></div>';
+                    }}
+                  />
+                ) : (
+                  <div className="w-full h-full bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-full flex items-center justify-center">
+                    <div className="w-28 h-28 bg-emerald-400 rounded-full opacity-80"></div>
+                  </div>
+                )}
               </div>
 
               {/* Profile Name */}

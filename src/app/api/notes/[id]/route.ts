@@ -20,11 +20,12 @@ function checkAuth(request: NextRequest) {
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const data = readData();
-    const note = data.notes?.find((n: Record<string, unknown>) => n.id === params.id);
+    const note = data.notes?.find((n: Record<string, unknown>) => n.id === id);
     
     if (!note) {
       return NextResponse.json({ error: 'Note not found' }, { status: 404 });
@@ -39,17 +40,18 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   if (!checkAuth(request)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
   try {
+    const { id } = await params;
     const body = await request.json();
     const data = readData();
     
-    const noteIndex = data.notes?.findIndex((n: Record<string, unknown>) => n.id === params.id);
+    const noteIndex = data.notes?.findIndex((n: Record<string, unknown>) => n.id === id);
     
     if (noteIndex === -1 || noteIndex === undefined) {
       return NextResponse.json({ error: 'Note not found' }, { status: 404 });
@@ -75,15 +77,16 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   if (!checkAuth(request)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
   try {
+    const { id } = await params;
     const data = readData();
-    const noteIndex = data.notes?.findIndex((n: Record<string, unknown>) => n.id === params.id);
+    const noteIndex = data.notes?.findIndex((n: Record<string, unknown>) => n.id === id);
     
     if (noteIndex === -1 || noteIndex === undefined) {
       return NextResponse.json({ error: 'Note not found' }, { status: 404 });
