@@ -96,47 +96,9 @@ export async function PUT(request: NextRequest) {
         warning: 'Note updated but not persisted in serverless environment'
       });
     }
-    
-    return NextResponse.json(notes[noteIndex]);
+      return NextResponse.json(notes[noteIndex]);
   } catch (error) {
     console.error('Failed to update note:', error);
     return NextResponse.json({ error: 'Failed to update note' }, { status: 500 });
-  }
-}
-
-export async function DELETE(request: NextRequest) {
-  if (!checkAuth(request)) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
-  try {
-    const { searchParams } = new URL(request.url);
-    const id = searchParams.get('id');
-    
-    if (!id) {
-      return NextResponse.json({ error: 'Note ID required' }, { status: 400 });
-    }
-      const db = PortfolioDatabase.getInstance();
-    const data = await db.getData();
-    const notes = Array.isArray(data.notes) ? [...data.notes] as Note[] : [];
-    const noteIndex = notes.findIndex((note) => note.id === id);
-    
-    if (noteIndex === -1) {
-      return NextResponse.json({ error: 'Note not found' }, { status: 404 });
-    }
-    
-    notes.splice(noteIndex, 1);
-    const updateSuccess = await db.updateData({ notes });
-    
-    if (!updateSuccess && db.isServerless()) {
-      return NextResponse.json({ 
-        success: true,
-        warning: 'Note deleted but not persisted in serverless environment'
-      });
-    }    
-    return NextResponse.json({ success: true });
-  } catch (error) {
-    console.error('Failed to delete note:', error);
-    return NextResponse.json({ error: 'Failed to delete note' }, { status: 500 });
   }
 }

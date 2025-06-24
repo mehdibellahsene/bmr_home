@@ -1,16 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
-import fs from 'fs';
-import path from 'path';
+import { PortfolioDatabase } from '@/lib/database';
 
-const dataPath = path.join(process.cwd(), 'data', 'portfolio.json');
-
-function readData() {
-  const fileContents = fs.readFileSync(dataPath, 'utf8');
-  return JSON.parse(fileContents);
-}
-
-function writeData(data: Record<string, unknown>) {
-  fs.writeFileSync(dataPath, JSON.stringify(data, null, 2));
+interface Note {
+  id: string;
+  title: string;
+  content: string;
+  publishedAt: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 function checkAuth(request: NextRequest) {
@@ -24,8 +21,10 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    const data = readData();
-    const note = data.notes?.find((n: Record<string, unknown>) => n.id === id);
+    const db = PortfolioDatabase.getInstance();
+    const data = await db.getData();
+    const notes = Array.isArray(data.notes) ? data.notes as Note[] : [];
+    const note = notes.find((n: Note) => n.id === id);
     
     if (!note) {
       return NextResponse.json({ error: 'Note not found' }, { status: 404 });
@@ -49,24 +48,33 @@ export async function PUT(
   try {
     const { id } = await params;
     const body = await request.json();
-    const data = readData();
+    const db = PortfolioDatabase.getInstance();
+    const data = await db.getData();
     
-    const noteIndex = data.notes?.findIndex((n: Record<string, unknown>) => n.id === id);
+    const notes = Array.isArray(data.notes) ? [...data.notes] as Note[] : [];
+    const noteIndex = notes.findIndex((n: Note) => n.id === id);
     
-    if (noteIndex === -1 || noteIndex === undefined) {
+    if (noteIndex === -1) {
       return NextResponse.json({ error: 'Note not found' }, { status: 404 });
     }
     
-    const updatedNote = {
-      ...data.notes[noteIndex],
+    const updatedNote: Note = {
+      ...notes[noteIndex],
       title: body.title,
       content: body.content,
       publishedAt: body.publishedAt,
       updatedAt: new Date().toISOString(),
     };
     
-    data.notes[noteIndex] = updatedNote;
-    writeData(data);
+    notes[noteIndex] = updatedNote;
+    const updateSuccess = await db.updateData({ notes });
+    
+    if (!updateSuccess && db.isServerless()) {
+      return NextResponse.json({ 
+        ...updatedNote,
+        warning: 'Note updated but not persisted in serverless environment'
+      });
+    }
     
     return NextResponse.json(updatedNote);
   } catch (error) {
@@ -85,15 +93,25 @@ export async function DELETE(
 
   try {
     const { id } = await params;
-    const data = readData();
-    const noteIndex = data.notes?.findIndex((n: Record<string, unknown>) => n.id === id);
+    const db = PortfolioDatabase.getInstance();
+    const data = await db.getData();
     
-    if (noteIndex === -1 || noteIndex === undefined) {
+    const notes = Array.isArray(data.notes) ? [...data.notes] as Note[] : [];
+    const noteIndex = notes.findIndex((n: Note) => n.id === id);
+    
+    if (noteIndex === -1) {
       return NextResponse.json({ error: 'Note not found' }, { status: 404 });
     }
     
-    data.notes.splice(noteIndex, 1);
-    writeData(data);
+    notes.splice(noteIndex, 1);
+    const updateSuccess = await db.updateData({ notes });
+    
+    if (!updateSuccess && db.isServerless()) {
+      return NextResponse.json({ 
+        success: true,
+        warning: 'Note deleted but not persisted in serverless environment'
+      });
+    }
     
     return NextResponse.json({ message: 'Note deleted successfully' });
   } catch (error) {

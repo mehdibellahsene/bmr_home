@@ -1,16 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
-import fs from 'fs';
-import path from 'path';
+import { PortfolioDatabase } from '@/lib/database';
 
-const dataPath = path.join(process.cwd(), 'data', 'portfolio.json');
-
-function readData() {
-  const fileContents = fs.readFileSync(dataPath, 'utf8');
-  return JSON.parse(fileContents);
-}
-
-function writeData(data: Record<string, unknown>) {
-  fs.writeFileSync(dataPath, JSON.stringify(data, null, 2));
+interface Learning {
+  id: string;
+  title: string;
+  description: string;
+  type: string;
+  date: string;
+  createdAt: string;
 }
 
 function checkAuth(request: NextRequest) {
@@ -24,14 +21,16 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    const data = readData();
-    const learning = data.learning?.find((l: Record<string, unknown>) => l.id === id);
+    const db = PortfolioDatabase.getInstance();
+    const data = await db.getData();
+    const learning = Array.isArray(data.learning) ? data.learning as Learning[] : [];
+    const learningItem = learning.find((l: Learning) => l.id === id);
     
-    if (!learning) {
+    if (!learningItem) {
       return NextResponse.json({ error: 'Learning item not found' }, { status: 404 });
     }
     
-    return NextResponse.json(learning);
+    return NextResponse.json(learningItem);
   } catch (error) {
     console.error('Failed to read learning item:', error);
     return NextResponse.json({ error: 'Failed to read learning item' }, { status: 500 });
@@ -49,24 +48,33 @@ export async function PUT(
   try {
     const { id } = await params;
     const body = await request.json();
-    const data = readData();
+    const db = PortfolioDatabase.getInstance();
+    const data = await db.getData();
     
-    const learningIndex = data.learning?.findIndex((l: Record<string, unknown>) => l.id === id);
+    const learning = Array.isArray(data.learning) ? [...data.learning] as Learning[] : [];
+    const learningIndex = learning.findIndex((l: Learning) => l.id === id);
     
-    if (learningIndex === -1 || learningIndex === undefined) {
+    if (learningIndex === -1) {
       return NextResponse.json({ error: 'Learning item not found' }, { status: 404 });
     }
     
-    const updatedLearning = {
-      ...data.learning[learningIndex],
+    const updatedLearning: Learning = {
+      ...learning[learningIndex],
       title: body.title,
       description: body.description,
       type: body.type,
       date: body.date,
     };
     
-    data.learning[learningIndex] = updatedLearning;
-    writeData(data);
+    learning[learningIndex] = updatedLearning;
+    const updateSuccess = await db.updateData({ learning });
+    
+    if (!updateSuccess && db.isServerless()) {
+      return NextResponse.json({ 
+        ...updatedLearning,
+        warning: 'Learning updated but not persisted in serverless environment'
+      });
+    }
     
     return NextResponse.json(updatedLearning);
   } catch (error) {
@@ -85,15 +93,25 @@ export async function DELETE(
 
   try {
     const { id } = await params;
-    const data = readData();
-    const learningIndex = data.learning?.findIndex((l: Record<string, unknown>) => l.id === id);
+    const db = PortfolioDatabase.getInstance();
+    const data = await db.getData();
     
-    if (learningIndex === -1 || learningIndex === undefined) {
+    const learning = Array.isArray(data.learning) ? [...data.learning] as Learning[] : [];
+    const learningIndex = learning.findIndex((l: Learning) => l.id === id);
+    
+    if (learningIndex === -1) {
       return NextResponse.json({ error: 'Learning item not found' }, { status: 404 });
     }
     
-    data.learning.splice(learningIndex, 1);
-    writeData(data);
+    learning.splice(learningIndex, 1);
+    const updateSuccess = await db.updateData({ learning });
+    
+    if (!updateSuccess && db.isServerless()) {
+      return NextResponse.json({ 
+        success: true,
+        warning: 'Learning deleted but not persisted in serverless environment'
+      });
+    }
     
     return NextResponse.json({ message: 'Learning item deleted successfully' });
   } catch (error) {

@@ -96,48 +96,9 @@ export async function PUT(request: NextRequest) {
         warning: 'Learning updated but not persisted in serverless environment'
       });
     }
-    
-    return NextResponse.json(learning[learningIndex]);
+      return NextResponse.json(learning[learningIndex]);
   } catch (error) {
     console.error('Failed to update learning:', error);
     return NextResponse.json({ error: 'Failed to update learning' }, { status: 500 });
-  }
-}
-
-export async function DELETE(request: NextRequest) {
-  if (!checkAuth(request)) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
-  try {
-    const { searchParams } = new URL(request.url);
-    const id = searchParams.get('id');
-    
-    if (!id) {
-      return NextResponse.json({ error: 'Learning ID required' }, { status: 400 });
-    }
-    
-    const db = PortfolioDatabase.getInstance();
-    const data = await db.getData();
-    const learning = Array.isArray(data.learning) ? [...data.learning] as Learning[] : [];
-    const learningIndex = learning.findIndex((item) => item.id === id);
-    
-    if (learningIndex === -1) {
-      return NextResponse.json({ error: 'Learning item not found' }, { status: 404 });
-    }
-    
-    learning.splice(learningIndex, 1);
-    const updateSuccess = await db.updateData({ learning });
-    
-    if (!updateSuccess && db.isServerless()) {
-      return NextResponse.json({ 
-        success: true,
-        warning: 'Learning deleted but not persisted in serverless environment'
-      });
-    }
-    
-    return NextResponse.json({ success: true });  } catch (error) {
-    console.error('Failed to delete learning:', error);
-    return NextResponse.json({ error: 'Failed to delete learning' }, { status: 500 });
   }
 }
