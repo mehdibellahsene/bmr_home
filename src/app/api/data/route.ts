@@ -1,24 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
-import fs from 'fs';
-import path from 'path';
+import { PortfolioDatabase } from '@/lib/database';
 
-const dataPath = path.join(process.cwd(), 'data', 'portfolio.json');
-
-function readData() {
-  const fileContents = fs.readFileSync(dataPath, 'utf8');
-  return JSON.parse(fileContents);
-}
-
-function writeData(data: Record<string, unknown>) {
-  fs.writeFileSync(dataPath, JSON.stringify(data, null, 2));
+// Check if user is authenticated
+function isAuthenticated(request: NextRequest): boolean {
+  const authCookie = request.cookies.get('admin-auth');
+  return authCookie?.value === 'authenticated';
 }
 
 export async function GET() {
   try {
-    const data = readData();
-    // Remove admin credentials from response
+    const db = PortfolioDatabase.getInstance();
+    const data = await db.getData();
+      // Remove admin credentials from response
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { admin: _admin, ...publicData } = data;
+    const { admin: _admin, ...publicData } = data as unknown as Record<string, unknown>;
     return NextResponse.json(publicData);
   } catch (error) {
     console.error('Failed to read data:', error);
@@ -28,18 +23,30 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
+    // Check authentication
+    if (!isAuthenticated(request)) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const body = await request.json();
-    const data = readData();
+    const db = PortfolioDatabase.getInstance();
     
-    // Update the data
-    Object.keys(body).forEach(key => {
-      if (key !== 'admin') {
-        data[key] = body[key];
-      }
-    });
+    // Filter out admin credentials from updates
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { admin: _admin, ...updateData } = body;
     
-    writeData(data);
-    return NextResponse.json({ success: true });
+    const updateSuccess = await db.updateData(updateData);
+    
+    if (!updateSuccess && db.isServerless()) {
+      // In serverless environments, we can't persist to file system
+      return NextResponse.json({ 
+        error: 'Cannot persist data in serverless environment. Data updated for current session only.',
+        warning: 'Consider using a database service like PlanetScale, Supabase, or MongoDB Atlas for persistent data storage.',
+        temporaryUpdate: true
+      }, { status: 200 }); // Still return success since data is updated in memory
+    }
+    
+    return NextResponse.json({ success: true, persisted: updateSuccess });
   } catch (error) {
     console.error('Failed to update data:', error);
     return NextResponse.json({ error: 'Failed to update data' }, { status: 500 });
