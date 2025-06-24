@@ -99,7 +99,7 @@ export default function NewLearning() {
                     <option value="project">Project</option>                    <option value="course">Course</option>
                     <option value="book">Book</option>
                     <option value="tutorial">Tutorial</option>
-                    <option value="workshop">Workshop</option>
+                    <option value="academy">Academic Path</option>
                     <option value="conference">Conference</option>
                   </select>
                 </div>

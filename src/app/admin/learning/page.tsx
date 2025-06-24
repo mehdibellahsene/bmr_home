@@ -39,7 +39,7 @@ export default function AdminLearning() {
       course: 'bg-gray-700 text-gray-300 border border-gray-600',
       book: 'bg-gray-700 text-gray-300 border border-gray-600',
       tutorial: 'bg-gray-700 text-gray-300 border border-gray-600',
-      workshop: 'bg-gray-700 text-gray-300 border border-gray-600',
+      academy: 'bg-gray-700 text-gray-300 border border-gray-600',
       certification: 'bg-gray-700 text-gray-300 border border-gray-600',
       other: 'bg-gray-700 text-gray-300 border border-gray-600'
     };

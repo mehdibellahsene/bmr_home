@@ -203,7 +203,7 @@ export default function EditLearning() {
                     <option value="course">Course</option>
                     <option value="book">Book</option>
                     <option value="tutorial">Tutorial</option>
-                    <option value="workshop">Workshop</option>
+                    <option value="academy">Academic Path</option>
                     <option value="certification">Certification</option>
                     <option value="other">Other</option>
                   </select>

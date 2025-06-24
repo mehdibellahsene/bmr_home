@@ -1,6 +1,8 @@
+'use client';
+
 import Link from "next/link";
 import Image from "next/image";
-import { PortfolioDatabase } from '@/lib/database';
+import { useEffect, useState } from 'react';
 
 interface PortfolioData {
   profile: {
@@ -18,49 +20,62 @@ interface PortfolioData {
   };
 }
 
-async function getPortfolioData(): Promise<PortfolioData> {
-  try {
-    const db = PortfolioDatabase.getInstance();
-    const data = await db.getData();
-    
-    return {
-      profile: data.profile || {
-        name: "Your Name",
-        title: "Full-stack developer specializing in the modern JavaScript stack, with startup and open-source experience. Very eager to learn, strongly communicative, self-driven to solve and create.",
-        location: "Your City, Your Country",
-        email: "your-email@example.com",
-        skills: "TypeScript, Node.js, React.js, SQL, Electron",
-        interests: "Type systems, compilers, codegen, OpenAPI",
-        homeImage: ""
-      },
-      links: data.links || {
-        work: [],
-        presence: []
-      }
-    };
-  } catch (error) {
-    console.error('Error reading portfolio data:', error);
-    // Return fallback data
-    return {
-      profile: {
-        name: "Your Name",
-        title: "Full-stack developer specializing in the modern JavaScript stack, with startup and open-source experience. Very eager to learn, strongly communicative, self-driven to solve and create.",
-        location: "Your City, Your Country",
-        email: "your-email@example.com",
-        skills: "TypeScript, Node.js, React.js, SQL, Electron",
-        interests: "Type systems, compilers, codegen, OpenAPI",
-        homeImage: ""
-      },
-      links: {
-        work: [],
-        presence: []
-      }
-    };
-  }
-}
+export default function Home() {
+  const [data, setData] = useState<PortfolioData>({
+    profile: {
+      name: "Your Name",
+      title: "Full-stack developer specializing in the modern JavaScript stack, with startup and open-source experience. Very eager to learn, strongly communicative, self-driven to solve and create.",
+      location: "Your City, Your Country",
+      email: "your-email@example.com",
+      skills: "TypeScript, Node.js, React.js, SQL, Electron",
+      interests: "Type systems, compilers, codegen, OpenAPI",
+      homeImage: ""
+    },
+    links: {
+      work: [],
+      presence: []
+    }
+  });  const [loading, setLoading] = useState(true);
 
-export default async function Home() {
-  const data = await getPortfolioData();  return (
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  const fetchData = async () => {
+    try {
+      const response = await fetch('/api/data');
+      if (response.ok) {
+        const portfolioData = await response.json();
+        setData({
+          profile: portfolioData.profile || {
+            name: "Your Name",
+            title: "Full-stack developer specializing in the modern JavaScript stack, with startup and open-source experience. Very eager to learn, strongly communicative, self-driven to solve and create.",
+            location: "Your City, Your Country",
+            email: "your-email@example.com",
+            skills: "TypeScript, Node.js, React.js, SQL, Electron",
+            interests: "Type systems, compilers, codegen, OpenAPI",
+            homeImage: ""
+          },
+          links: portfolioData.links || {
+            work: [],
+            presence: []
+          }
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching portfolio data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <div className="text-white">Loading...</div>
+      </div>
+    );
+  }return (
     <div className="min-h-screen bg-black flex">      {/* Sidebar Navigation */}
       <aside className="w-64 bg-black border-r border-gray-800 p-6 shadow-xl">
         <div className="mb-8">

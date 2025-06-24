@@ -1,6 +1,7 @@
+'use client';
+
 import Link from "next/link";
-import fs from 'fs';
-import path from 'path';
+import { useEffect, useState } from 'react';
 
 interface Learning {
   id: string;
@@ -21,36 +22,35 @@ interface PortfolioData {
   };
 }
 
-async function getLearningData(): Promise<Learning[]> {
-  try {
-    const dataPath = path.join(process.cwd(), 'data', 'portfolio.json');
-    const fileContents = fs.readFileSync(dataPath, 'utf8');
-    const data = JSON.parse(fileContents);
-    return data.learning || [];
-  } catch (error) {
-    console.error('Error reading learning data:', error);
-    return [];
-  }
-}
+export default function Learning() {
+  const [learning, setLearning] = useState<Learning[]>([]);
+  const [portfolioData, setPortfolioData] = useState<PortfolioData>({
+    profile: { name: "Your Name" },
+    links: { work: [], presence: [] }
+  });
+  const [loading, setLoading] = useState(true);
 
-async function getPortfolioData(): Promise<PortfolioData> {
-  try {
-    const dataPath = path.join(process.cwd(), 'data', 'portfolio.json');
-    const fileContents = fs.readFileSync(dataPath, 'utf8');
-    const data = JSON.parse(fileContents);
-    
-    return {
-      profile: data.profile,
-      links: data.links
-    };
-  } catch (error) {
-    console.error('Error reading portfolio data:', error);
-    return {
-      profile: { name: "Your Name" },
-      links: { work: [], presence: [] }
-    };
-  }
-}
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  const fetchData = async () => {
+    try {
+      const response = await fetch('/api/data');
+      if (response.ok) {
+        const data = await response.json();
+        setLearning(data.learning || []);
+        setPortfolioData({
+          profile: data.profile,
+          links: data.links
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching learning data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
 function groupLearningByMonth(learning: Learning[]) {
   const groups: { [key: string]: Learning[] } = {};
@@ -91,19 +91,21 @@ function getTypeColor(type: string): string {
     course: 'bg-blue-600 text-blue-100',
     book: 'bg-purple-600 text-purple-100',
     tutorial: 'bg-yellow-600 text-yellow-100',
-    workshop: 'bg-red-600 text-red-100',
+    academy: 'bg-red-600 text-red-100',
     conference: 'bg-indigo-600 text-indigo-100',
   };
   return colors[type] || 'bg-gray-600 text-gray-100';
 }
 
-export default async function Learning() {
-  const [learning, portfolioData] = await Promise.all([
-    getLearningData(),
-    getPortfolioData()
-  ]);
+  const groupedLearning = groupLearningByMonth(learning);
 
-  const groupedLearning = groupLearningByMonth(learning);  return (
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <div className="text-white">Loading...</div>
+      </div>
+    );
+  }return (
     <div className="min-h-screen bg-black flex">
       {/* Sidebar Navigation */}
       <aside className="w-64 bg-black border-r border-gray-800 p-6">
@@ -139,7 +141,7 @@ export default async function Learning() {
               Work
             </h3>
             <div className="space-y-2">
-              {portfolioData.links.work.map((link) => (
+              {portfolioData.links.work.map((link: { id: string; name: string; url: string; icon: string }) => (
                 <a
                   key={link.id}
                   href={link.url}
@@ -162,7 +164,7 @@ export default async function Learning() {
               Presence
             </h3>
             <div className="space-y-2">
-              {portfolioData.links.presence.map((link) => (
+              {portfolioData.links.presence.map((link: { id: string; name: string; url: string; icon: string }) => (
                 <a
                   key={link.id}
                   href={link.url}

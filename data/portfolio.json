@@ -1,25 +1,43 @@
 {
   "profile": {
-    "name": "Mehdi",
-    "title": "Full-stack developer specializing in the modern JavaScript stack, with startup and open-source experience. Very eager to learn, strongly communicative, self-driven to solve and create.",
-    "location": "Biarritz - Bordeaux, France ",
-    "email": "mehdiredha6@gmail.com",
-    "skills": "TypeScript, Node.js, React.js, SQL, Electron",
-    "interests": "Type systems, compilers, codegen, OpenAPI",
-    "homeImage": "https://avatars.githubusercontent.com/u/114833655?v=4"
+    "name": "John Doe",  "notes": [
+    {
+      "id": "1750770907839",
+      "title": "Welcome Note",
+      "content": "This is a sample note to demonstrate the notes feature. You can write anything here!\n",
+      "publishedAt": "2025-06-24",
+      "createdAt": "2025-06-24T13:15:07.839Z",
+      "updatedAt": "2025-06-24T13:15:07.839Z"
+    }
+  ],
+  "learning": [
+    {
+      "id": "1750770941985",
+      "title": "Introduction to Algorithms",
+      "description": "Basic algorithms and data structures course covering sorting, searching, and common patterns.",
+      "type": "course",
+      "date": "2025-06-24",
+      "createdAt": "2025-06-24T13:15:41.985Z"
+    }
+  ]stack developer with experience in modern web technologies. Passionate about building scalable applications and learning new technologies.",
+    "location": "New York, NY, USA",
+    "email": "john.doe@example.com",
+    "skills": "JavaScript, TypeScript, React, Node.js, Python, SQL",
+    "interests": "Web development, AI/ML, cloud computing, open source",
+    "homeImage": "https://via.placeholder.com/400x400/6366f1/ffffff?text=JD"
   },
   "links": {
     "work": [
       {
         "id": "1",
-        "name": "Your Company",
-        "url": "https://your-company.com",
+        "name": "Tech Startup Inc",
+        "url": "https://example-startup.com",
         "icon": "🔗"
       },
       {
         "id": "2",
-        "name": "Your Project",
-        "url": "https://your-project.com",
+        "name": "Portfolio Dashboard",
+        "url": "https://my-portfolio-project.com",
         "icon": "📊"
       }
     ],
@@ -27,13 +45,13 @@
       {
         "id": "3",
         "name": "GitHub",
-        "url": "https://github.com/yourusername",
+        "url": "https://github.com/johndoe",
         "icon": "🐙"
       },
       {
         "id": "4",
         "name": "LinkedIn",
-        "url": "https://linkedin.com/in/yourprofile",
+        "url": "https://linkedin.com/in/johndoe",
         "icon": "💼"
       }
     ]
@@ -51,8 +69,8 @@
   "learning": [
     {
       "id": "1750770941985",
-      "title": "ALGO STATIQUE ",
-      "description": "ALSD",
+      "title": "Course ",
+      "description": "course",
       "type": "course",
       "date": "2025-06-24",
       "createdAt": "2025-06-24T13:15:41.985Z"
