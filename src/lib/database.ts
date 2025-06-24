@@ -90,22 +90,23 @@ export class PortfolioDatabase {
   async getData(): Promise<PortfolioData> {
     if (this.data) {
       return this.data;
-    }
-
-    // Try to read from file system (works locally)
+    }    // Try to read from file system (works locally)
     if (typeof window === 'undefined') {
       try {
         const fs = await import('fs');
         const path = await import('path');
         const dataPath = path.join(process.cwd(), 'data', 'portfolio.json');
         const fileContents = fs.readFileSync(dataPath, 'utf8');
-        this.data = JSON.parse(fileContents);
-        return this.data;
+        const parsedData = JSON.parse(fileContents) as PortfolioData;
+        this.data = parsedData;
+        return parsedData;
       } catch (error) {
         console.warn('Could not read from file system, using default data:', error);
       }
-    }    // Fallback to default data
-    this.data = defaultData;
+    }
+
+    // Fallback to default data
+    this.data = { ...defaultData };
     return this.data;
   }
 
