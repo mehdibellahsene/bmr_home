@@ -1,16 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
-import fs from 'fs';
-import path from 'path';
+import { PortfolioDatabase } from '@/lib/database';
 
-const dataPath = path.join(process.cwd(), 'data', 'portfolio.json');
-
-function readData() {
-  const fileContents = fs.readFileSync(dataPath, 'utf8');
-  return JSON.parse(fileContents);
-}
-
-function writeData(data: Record<string, unknown>) {
-  fs.writeFileSync(dataPath, JSON.stringify(data, null, 2));
+interface Learning {
+  id: string;
+  title: string;
+  description: string;
+  type: string;
+  date: string;
+  createdAt: string;
 }
 
 function checkAuth(request: NextRequest) {
@@ -20,7 +17,8 @@ function checkAuth(request: NextRequest) {
 
 export async function GET() {
   try {
-    const data = readData();
+    const db = PortfolioDatabase.getInstance();
+    const data = await db.getData();
     return NextResponse.json(data.learning || []);
   } catch (error) {
     console.error('Failed to read learning:', error);
@@ -35,7 +33,8 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const data = readData();
+    const db = PortfolioDatabase.getInstance();
+    const data = await db.getData();
     
     const newLearning = {
       id: Date.now().toString(),
@@ -46,10 +45,17 @@ export async function POST(request: NextRequest) {
       createdAt: new Date().toISOString(),
     };
     
-    data.learning = data.learning || [];
-    data.learning.unshift(newLearning); // Add to beginning
+    const updatedLearning = Array.isArray(data.learning) ? [...data.learning] : [];
+    updatedLearning.unshift(newLearning); // Add to beginning    
+    const updateSuccess = await db.updateData({ learning: updatedLearning });
     
-    writeData(data);
+    if (!updateSuccess && db.isServerless()) {
+      return NextResponse.json({ 
+        ...newLearning,
+        warning: 'Learning created but not persisted in serverless environment'
+      });
+    }
+    
     return NextResponse.json(newLearning);
   } catch (error) {
     console.error('Failed to create learning:', error);
@@ -64,23 +70,34 @@ export async function PUT(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const data = readData();
+    const db = PortfolioDatabase.getInstance();
+    const data = await db.getData();
     
-    const learningIndex = data.learning.findIndex((item: { id: string }) => item.id === body.id);
+    const learning = Array.isArray(data.learning) ? [...data.learning] as Learning[] : [];
+    const learningIndex = learning.findIndex((item) => item.id === body.id);
+    
     if (learningIndex === -1) {
       return NextResponse.json({ error: 'Learning item not found' }, { status: 404 });
     }
     
-    data.learning[learningIndex] = {
-      ...data.learning[learningIndex],
+    learning[learningIndex] = {
+      ...learning[learningIndex],
       title: body.title,
       description: body.description,
       type: body.type,
       date: body.date,
     };
     
-    writeData(data);
-    return NextResponse.json(data.learning[learningIndex]);
+    const updateSuccess = await db.updateData({ learning });
+    
+    if (!updateSuccess && db.isServerless()) {
+      return NextResponse.json({ 
+        ...learning[learningIndex],
+        warning: 'Learning updated but not persisted in serverless environment'
+      });
+    }
+    
+    return NextResponse.json(learning[learningIndex]);
   } catch (error) {
     console.error('Failed to update learning:', error);
     return NextResponse.json({ error: 'Failed to update learning' }, { status: 500 });
@@ -100,18 +117,26 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'Learning ID required' }, { status: 400 });
     }
     
-    const data = readData();
-    const learningIndex = data.learning.findIndex((item: { id: string }) => item.id === id);
+    const db = PortfolioDatabase.getInstance();
+    const data = await db.getData();
+    const learning = Array.isArray(data.learning) ? [...data.learning] as Learning[] : [];
+    const learningIndex = learning.findIndex((item) => item.id === id);
     
     if (learningIndex === -1) {
       return NextResponse.json({ error: 'Learning item not found' }, { status: 404 });
     }
     
-    data.learning.splice(learningIndex, 1);
-    writeData(data);
+    learning.splice(learningIndex, 1);
+    const updateSuccess = await db.updateData({ learning });
     
-    return NextResponse.json({ success: true });
-  } catch (error) {
+    if (!updateSuccess && db.isServerless()) {
+      return NextResponse.json({ 
+        success: true,
+        warning: 'Learning deleted but not persisted in serverless environment'
+      });
+    }
+    
+    return NextResponse.json({ success: true });  } catch (error) {
     console.error('Failed to delete learning:', error);
     return NextResponse.json({ error: 'Failed to delete learning' }, { status: 500 });
   }

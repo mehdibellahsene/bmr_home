@@ -1,7 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
-import fs from 'fs';
-import path from 'path';
+import { PortfolioDatabase } from '@/lib/database';
 
 interface PortfolioData {
   profile: {
@@ -21,14 +20,25 @@ interface PortfolioData {
 
 async function getPortfolioData(): Promise<PortfolioData> {
   try {
-    const dataPath = path.join(process.cwd(), 'data', 'portfolio.json');
-    const fileContents = fs.readFileSync(dataPath, 'utf8');
-    const data = JSON.parse(fileContents);
+    const db = PortfolioDatabase.getInstance();
+    const data = await db.getData();
     
     return {
-      profile: data.profile,
-      links: data.links
-    };  } catch (error) {
+      profile: data.profile || {
+        name: "Your Name",
+        title: "Full-stack developer specializing in the modern JavaScript stack, with startup and open-source experience. Very eager to learn, strongly communicative, self-driven to solve and create.",
+        location: "Your City, Your Country",
+        email: "your-email@example.com",
+        skills: "TypeScript, Node.js, React.js, SQL, Electron",
+        interests: "Type systems, compilers, codegen, OpenAPI",
+        homeImage: ""
+      },
+      links: data.links || {
+        work: [],
+        presence: []
+      }
+    };
+  } catch (error) {
     console.error('Error reading portfolio data:', error);
     // Return fallback data
     return {
