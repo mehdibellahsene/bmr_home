@@ -86,11 +86,8 @@ export class PortfolioDatabase {
     }
     return PortfolioDatabase.instance;
   }
-
   async getData(): Promise<PortfolioData> {
-    if (this.data) {
-      return this.data;
-    }    // Try to read from file system (works locally)
+    // Always try to read fresh data from file system first
     if (typeof window === 'undefined') {
       try {
         const fs = await import('fs');
@@ -98,19 +95,26 @@ export class PortfolioDatabase {
         const dataPath = path.join(process.cwd(), 'data', 'portfolio.json');
         const fileContents = fs.readFileSync(dataPath, 'utf8');
         const parsedData = JSON.parse(fileContents) as PortfolioData;
-        this.data = parsedData;
+        this.data = parsedData; // Update cache
         return parsedData;
       } catch (error) {
-        console.warn('Could not read from file system, using default data:', error);
+        console.warn('Could not read from file system:', error);
+        // If file read fails but we have cached data, use it
+        if (this.data) {
+          console.log('Using cached data as fallback');
+          return this.data;
+        }
       }
     }
 
-    // Fallback to default data
-    this.data = { ...defaultData };
+    // If no cached data and file read failed, use default data
+    if (!this.data) {
+      console.log('Using default data');
+      this.data = { ...defaultData };
+    }
+    
     return this.data;
-  }
-
-  async updateData(newData: Partial<PortfolioData>): Promise<boolean> {
+  }  async updateData(newData: Partial<PortfolioData>): Promise<boolean> {
     const currentData = await this.getData();
     
     // Merge the data
@@ -136,6 +140,11 @@ export class PortfolioDatabase {
     }
 
     return false;
+  }
+  
+  // Method to clear the cache to ensure fresh data is loaded
+  clearCache(): void {
+    this.data = null;
   }
   // Method to check if we're in a serverless environment
   isServerless(): boolean {

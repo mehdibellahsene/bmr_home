@@ -17,9 +17,12 @@ function checkAuth(request: NextRequest) {
 
 export async function GET() {
   try {
+    console.log('Fetching learning items...');
     const db = PortfolioDatabase.getInstance();
     const data = await db.getData();
-    return NextResponse.json(data.learning || []);
+    const learning = data.learning || [];
+    console.log(`Found ${learning.length} learning items`);
+    return NextResponse.json(learning);
   } catch (error) {
     console.error('Failed to read learning:', error);
     return NextResponse.json({ error: 'Failed to read learning' }, { status: 500 });

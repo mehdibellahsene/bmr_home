@@ -26,27 +26,72 @@ export default function AdminDashboard() {
   const [notes, setNotes] = useState<Note[]>([]);
   const [learning, setLearning] = useState<Learning[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const router = useRouter();
 
   useEffect(() => {
     fetchData();
-  }, []);
-
-  const fetchData = async () => {
+  }, []);  const fetchData = async () => {
+    setLoading(true);
+    setError(null);
+    
     try {
-      const [notesRes, learningRes] = await Promise.all([
-        fetch('/api/notes'),
-        fetch('/api/learning')
-      ]);
+      // Fetch both with individual error handling
+      const notesPromise = fetch('/api/notes').then(async (res) => {
+        if (res.ok) {
+          const data = await res.json();
+          return Array.isArray(data) ? data : [];
+        } else {
+          console.error('Failed to fetch notes:', res.status, res.statusText);
+          throw new Error(`Failed to fetch notes: ${res.status}`);
+        }
+      }).catch((error) => {
+        console.error('Error fetching notes:', error);
+        throw error;
+      });
 
-      if (notesRes.ok && learningRes.ok) {
-        const notesData = await notesRes.json();
-        const learningData = await learningRes.json();
-        setNotes(notesData);
-        setLearning(learningData);
+      const learningPromise = fetch('/api/learning').then(async (res) => {
+        if (res.ok) {
+          const data = await res.json();
+          return Array.isArray(data) ? data : [];
+        } else {
+          console.error('Failed to fetch learning:', res.status, res.statusText);
+          throw new Error(`Failed to fetch learning: ${res.status}`);
+        }
+      }).catch((error) => {
+        console.error('Error fetching learning:', error);
+        throw error;
+      });
+
+      const results = await Promise.allSettled([notesPromise, learningPromise]);
+      
+      // Handle notes result
+      if (results[0].status === 'fulfilled') {
+        setNotes(results[0].value);
+      } else {
+        console.error('Notes fetch failed:', results[0].reason);
+        setNotes([]);
       }
+      
+      // Handle learning result
+      if (results[1].status === 'fulfilled') {
+        setLearning(results[1].value);
+      } else {
+        console.error('Learning fetch failed:', results[1].reason);
+        setLearning([]);
+      }
+      
+      // Set error if both failed
+      if (results[0].status === 'rejected' && results[1].status === 'rejected') {
+        setError('Failed to load data. Please try again.');
+      }
+      
     } catch (error) {
       console.error('Failed to fetch data:', error);
+      setError('Failed to load data. Please try again.');
+      // Set empty arrays as fallback
+      setNotes([]);
+      setLearning([]);
     } finally {
       setLoading(false);
     }
@@ -70,7 +115,23 @@ export default function AdminDashboard() {
         </div>
       </div>
     );
-  }  return (
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <div className="flex flex-col items-center space-y-4">
+          <div className="text-red-400 text-lg">⚠️ {error}</div>
+          <button
+            onClick={fetchData}
+            className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }return (
     <div className="min-h-screen bg-black">
       {/* Header */}
       <header className="bg-gray-900 border-b border-gray-800 shadow-xl">
@@ -79,8 +140,14 @@ export default function AdminDashboard() {
             <div>
               <h1 className="text-3xl font-bold text-white">Admin Dashboard</h1>
               <p className="text-gray-400 mt-1">Manage your content and profile</p>
-            </div>
-            <div className="flex space-x-4">
+            </div>            <div className="flex space-x-4">
+              <button
+                onClick={fetchData}
+                disabled={loading}
+                className="text-gray-300 hover:text-white px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 hover:bg-gray-800 border border-gray-700 disabled:opacity-50"
+              >
+                🔄 Refresh
+              </button>
               <Link
                 href="/"
                 className="text-gray-300 hover:text-white px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 hover:bg-gray-800 border border-gray-700"

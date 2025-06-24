@@ -17,9 +17,12 @@ function checkAuth(request: NextRequest) {
 
 export async function GET() {
   try {
+    console.log('Fetching notes...');
     const db = PortfolioDatabase.getInstance();
     const data = await db.getData();
-    return NextResponse.json(data.notes || []);
+    const notes = data.notes || [];
+    console.log(`Found ${notes.length} notes`);
+    return NextResponse.json(notes);
   } catch (error) {
     console.error('Failed to read notes:', error);
     return NextResponse.json({ error: 'Failed to read notes' }, { status: 500 });
