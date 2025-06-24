@@ -12,6 +12,14 @@ const josefinSans = Josefin_Sans({
 export const metadata: Metadata = {
   title: "Your Portfolio - Full-stack Developer",
   description: "Full-stack developer specializing in modern web technologies with startup and open-source experience.",
+  icons: {
+    icon: [
+      { url: '/favicon.svg', type: 'image/svg+xml' },
+      { url: '/api/favicon', type: 'image/png' }
+    ],
+    shortcut: '/favicon.svg',
+    apple: '/api/apple-touch-icon',
+  },
 };
 
 export default function RootLayout({

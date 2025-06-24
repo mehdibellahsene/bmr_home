@@ -1,43 +1,25 @@
 {
   "profile": {
-    "name": "John Doe",  "notes": [
-    {
-      "id": "1750770907839",
-      "title": "Welcome Note",
-      "content": "This is a sample note to demonstrate the notes feature. You can write anything here!\n",
-      "publishedAt": "2025-06-24",
-      "createdAt": "2025-06-24T13:15:07.839Z",
-      "updatedAt": "2025-06-24T13:15:07.839Z"
-    }
-  ],
-  "learning": [
-    {
-      "id": "1750770941985",
-      "title": "Introduction to Algorithms",
-      "description": "Basic algorithms and data structures course covering sorting, searching, and common patterns.",
-      "type": "course",
-      "date": "2025-06-24",
-      "createdAt": "2025-06-24T13:15:41.985Z"
-    }
-  ]stack developer with experience in modern web technologies. Passionate about building scalable applications and learning new technologies.",
-    "location": "New York, NY, USA",
-    "email": "john.doe@example.com",
-    "skills": "JavaScript, TypeScript, React, Node.js, Python, SQL",
-    "interests": "Web development, AI/ML, cloud computing, open source",
-    "homeImage": "https://via.placeholder.com/400x400/6366f1/ffffff?text=JD"
+    "name": "Your Name",
+    "title": "Full-stack developer specializing in the modern JavaScript stack, with startup and open-source experience. Very eager to learn, strongly communicative, self-driven to solve and create.",
+    "location": "Biarritz - Bordeaux, France ",
+    "email": "your mail",
+    "skills": "TypeScript, Node.js, React.js, SQL, Electron",
+    "interests": "Type systems, compilers, codegen, OpenAPI",
+    "homeImage": ""
   },
   "links": {
     "work": [
       {
         "id": "1",
-        "name": "Tech Startup Inc",
-        "url": "https://example-startup.com",
+        "name": "Your Company",
+        "url": "https://www.office64.fr/",
         "icon": "🔗"
       },
       {
         "id": "2",
-        "name": "Portfolio Dashboard",
-        "url": "https://my-portfolio-project.com",
+        "name": "Your Project",
+        "url": "https://your-project.com",
         "icon": "📊"
       }
     ],
@@ -45,13 +27,13 @@
       {
         "id": "3",
         "name": "GitHub",
-        "url": "https://github.com/johndoe",
+        "url": "https://github.com/yourusername",
         "icon": "🐙"
       },
       {
         "id": "4",
         "name": "LinkedIn",
-        "url": "https://linkedin.com/in/johndoe",
+        "url": "https://linkedin.com/in/yourprofile",
         "icon": "💼"
       }
     ]
@@ -69,8 +51,8 @@
   "learning": [
     {
       "id": "1750770941985",
-      "title": "Course ",
-      "description": "course",
+      "title": "ALGO STATIQUE ",
+      "description": "ALSD",
       "type": "course",
       "date": "2025-06-24",
       "createdAt": "2025-06-24T13:15:41.985Z"
