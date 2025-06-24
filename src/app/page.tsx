@@ -134,8 +134,7 @@ export default async function Home() {
         )}</aside>      {/* Main Content */}
       <main className="flex-1 flex items-center justify-center bg-black">
         <div className="max-w-4xl w-full mx-auto px-8">          {/* Profile Card */}
-          <div className="bg-gray-900 rounded-2xl p-8 shadow-2xl border border-gray-800">            <div className="text-left">
-              {/* Profile Avatar */}              <div className="w-32 h-32 rounded-full mb-6 flex items-center justify-center shadow-lg overflow-hidden">
+          <div className="bg-gray-900 rounded-2xl p-8 shadow-2xl border border-gray-800">            <div className="text-left">              {/* Profile Avatar */}              <div className="w-32 h-32 rounded-full mb-6 flex items-center justify-center shadow-lg overflow-hidden">
                 {data.profile.homeImage ? (
                   <Image 
                     src={data.profile.homeImage} 
@@ -143,11 +142,8 @@ export default async function Home() {
                     width={128}
                     height={128}
                     className="w-full h-full object-cover rounded-full"
-                    onError={(e) => {
-                      // Fallback to default gradient if image fails to load
-                      e.currentTarget.style.display = 'none';
-                      e.currentTarget.parentElement!.innerHTML = '<div class="w-full h-full bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-full flex items-center justify-center"><div class="w-28 h-28 bg-emerald-400 rounded-full opacity-80"></div></div>';
-                    }}
+                    priority
+                    unoptimized={data.profile.homeImage.startsWith('http')}
                   />
                 ) : (
                   <div className="w-full h-full bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-full flex items-center justify-center">

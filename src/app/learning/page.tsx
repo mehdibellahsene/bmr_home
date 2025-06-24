@@ -177,11 +177,9 @@ export default async function Learning() {
             </div>
           </div>
         )}
-      </aside>
-
-      {/* Main Content */}
-      <main className="flex-1 p-12 bg-black">
-        <div className="max-w-4xl">
+      </aside>      {/* Main Content */}
+      <main className="flex-1 p-12 bg-black flex justify-center">
+        <div className="max-w-4xl w-full">
           <div className="mb-12">
             <h1 className="text-5xl font-bold text-white mb-4">📚 Learning Journey</h1>
             <p className="text-gray-400 text-lg">Books, courses and projects I have learned from</p>

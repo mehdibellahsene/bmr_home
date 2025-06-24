@@ -1,12 +1,12 @@
 {
   "profile": {
-    "name": "Your Name",
+    "name": "Mehdi",
     "title": "Full-stack developer specializing in the modern JavaScript stack, with startup and open-source experience. Very eager to learn, strongly communicative, self-driven to solve and create.",
-    "location": "Your City, Your Country",
-    "email": "your-email@example.com",
+    "location": "Biarritz - Bordeaux, France ",
+    "email": "mehdiredha6@gmail.com",
     "skills": "TypeScript, Node.js, React.js, SQL, Electron",
     "interests": "Type systems, compilers, codegen, OpenAPI",
-    "homeImage": ""
+    "homeImage": "https://avatars.githubusercontent.com/u/114833655?v=4"
   },
   "links": {
     "work": [
@@ -38,6 +38,24 @@
       }
     ]
   },
-  "notes": [],
-  "learning": []
+  "notes": [
+    {
+      "id": "1750770907839",
+      "title": "Hi ",
+      "content": "Hello world\n",
+      "publishedAt": "2025-06-24",
+      "createdAt": "2025-06-24T13:15:07.839Z",
+      "updatedAt": "2025-06-24T13:15:07.839Z"
+    }
+  ],
+  "learning": [
+    {
+      "id": "1750770941985",
+      "title": "ALGO STATIQUE ",
+      "description": "ALSD",
+      "type": "course",
+      "date": "2025-06-24",
+      "createdAt": "2025-06-24T13:15:41.985Z"
+    }
+  ]
 }
