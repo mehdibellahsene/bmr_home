@@ -17,13 +17,11 @@ function checkAuth(request: NextRequest) {
 
 export async function GET() {
   try {
-    console.log('Fetching learning items...');
     const db = PortfolioDatabase.getInstance();
     // Clear cache to ensure fresh data
     db.clearCache();
     const data = await db.getData();
     const learning = Array.isArray(data.learning) ? data.learning : [];
-    console.log(`Found ${learning.length} learning items`);
     return NextResponse.json(learning);
   } catch (error) {
     console.error('Failed to read learning:', error);
@@ -49,16 +47,19 @@ export async function POST(request: NextRequest) {
       date: body.date,
       createdAt: new Date().toISOString(),
     };
+      const updatedLearning = Array.isArray(data.learning) ? [...data.learning] : [];
+    updatedLearning.unshift(newLearning); // Add to beginning
+      const updateSuccess = await db.updateData({ learning: updatedLearning });
     
-    const updatedLearning = Array.isArray(data.learning) ? [...data.learning] : [];
-    updatedLearning.unshift(newLearning); // Add to beginning    
-    const updateSuccess = await db.updateData({ learning: updatedLearning });
-    
-    if (!updateSuccess && db.isServerless()) {
-      return NextResponse.json({ 
-        ...newLearning,
-        warning: 'Learning created but not persisted in serverless environment'
-      });
+    if (!updateSuccess) {
+      if (db.isServerless()) {
+        return NextResponse.json({ 
+          ...newLearning,
+          warning: 'Learning created but not persisted in serverless environment'
+        });
+      } else {
+        return NextResponse.json({ error: 'Failed to persist learning' }, { status: 500 });
+      }
     }
     
     return NextResponse.json(newLearning);
@@ -91,17 +92,20 @@ export async function PUT(request: NextRequest) {
       description: body.description,
       type: body.type,
       date: body.date,
-    };
+    };    const updateSuccess = await db.updateData({ learning });
     
-    const updateSuccess = await db.updateData({ learning });
-    
-    if (!updateSuccess && db.isServerless()) {
-      return NextResponse.json({ 
-        ...learning[learningIndex],
-        warning: 'Learning updated but not persisted in serverless environment'
-      });
+    if (!updateSuccess) {
+      if (db.isServerless()) {
+        return NextResponse.json({ 
+          ...learning[learningIndex],
+          warning: 'Learning updated but not persisted in serverless environment'
+        });
+      } else {
+        return NextResponse.json({ error: 'Failed to persist learning update' }, { status: 500 });
+      }
     }
-      return NextResponse.json(learning[learningIndex]);
+    
+    return NextResponse.json(learning[learningIndex]);
   } catch (error) {
     console.error('Failed to update learning:', error);
     return NextResponse.json({ error: 'Failed to update learning' }, { status: 500 });

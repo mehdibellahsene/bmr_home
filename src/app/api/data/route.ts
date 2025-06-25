@@ -20,8 +20,7 @@ export async function GET(request: NextRequest) {
       db.clearCache();
       
       const data = await db.getData();
-      
-      const validation = {
+        const validation = {
         status: 'success',
         timestamp: new Date().toISOString(),
         data: {
@@ -38,7 +37,6 @@ export async function GET(request: NextRequest) {
         }
       };
       
-      console.log('Data validation result:', validation);
       return NextResponse.json(validation);
     }
     
@@ -66,17 +64,19 @@ export async function POST(request: NextRequest) {
     
     // Filter out admin credentials from updates
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { admin: _admin, ...updateData } = body;
+    const { admin: _admin, ...updateData } = body;    const updateSuccess = await db.updateData(updateData);
     
-    const updateSuccess = await db.updateData(updateData);
-    
-    if (!updateSuccess && db.isServerless()) {
-      // In serverless environments, we can't persist to file system
-      return NextResponse.json({ 
-        error: 'Cannot persist data in serverless environment. Data updated for current session only.',
-        warning: 'Consider using a database service like PlanetScale, Supabase, or MongoDB Atlas for persistent data storage.',
-        temporaryUpdate: true
-      }, { status: 200 }); // Still return success since data is updated in memory
+    if (!updateSuccess) {
+      if (db.isServerless()) {
+        // In serverless environments, we can't persist to file system
+        return NextResponse.json({ 
+          error: 'Cannot persist data in serverless environment. Data updated for current session only.',
+          warning: 'Consider using a database service for persistent data storage.',
+          temporaryUpdate: true
+        }, { status: 200 });
+      } else {
+        return NextResponse.json({ error: 'Failed to persist data' }, { status: 500 });
+      }
     }
     
     return NextResponse.json({ success: true, persisted: updateSuccess });

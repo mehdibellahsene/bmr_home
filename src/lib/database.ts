@@ -125,7 +125,6 @@ export class PortfolioDatabase {
   }  async getData(): Promise<PortfolioData> {
     // In serverless environments (like Vercel), prioritize static data
     if (this.isServerless()) {
-      console.log('Serverless environment detected, using static data');
       const cleanData = {
         profile: STATIC_PORTFOLIO_DATA.profile || defaultData.profile,
         links: STATIC_PORTFOLIO_DATA.links || defaultData.links,
@@ -133,10 +132,6 @@ export class PortfolioDatabase {
         learning: Array.isArray(STATIC_PORTFOLIO_DATA.learning) ? STATIC_PORTFOLIO_DATA.learning : [],
       };
       this.data = cleanData;
-      console.log('Data loaded from static data (serverless):', {
-        notesCount: cleanData.notes.length,
-        learningCount: cleanData.learning.length
-      });
       return cleanData;
     }
 
@@ -146,10 +141,10 @@ export class PortfolioDatabase {
         const fs = await import('fs');
         const path = await import('path');
         const dataPath = path.join(process.cwd(), 'data', 'portfolio.json');
-          // Check if file exists
+        
+        // Check if file exists
         if (!fs.existsSync(dataPath)) {
-          console.warn('Portfolio data file does not exist, using static data');
-          // Use static data as fallback for serverless environments
+          // Use static data as fallback
           const cleanData = {
             profile: STATIC_PORTFOLIO_DATA.profile || defaultData.profile,
             links: STATIC_PORTFOLIO_DATA.links || defaultData.links,
@@ -157,17 +152,13 @@ export class PortfolioDatabase {
             learning: Array.isArray(STATIC_PORTFOLIO_DATA.learning) ? STATIC_PORTFOLIO_DATA.learning : [],
           };
           this.data = cleanData;
-          console.log('Data loaded from static data:', {
-            notesCount: cleanData.notes.length,
-            learningCount: cleanData.learning.length
-          });
           return cleanData;
         }
         
         const fileContents = fs.readFileSync(dataPath, 'utf8');
         const parsedData = JSON.parse(fileContents) as PortfolioData;
         
-        // Only ensure required arrays exist, don't merge with default profile/links data
+        // Ensure required arrays exist
         const cleanData = {
           profile: parsedData.profile || defaultData.profile,
           links: parsedData.links || defaultData.links,
@@ -175,14 +166,9 @@ export class PortfolioDatabase {
           learning: Array.isArray(parsedData.learning) ? parsedData.learning : [],
         };
         
-        this.data = cleanData; // Update cache
-        console.log('Data loaded from file system:', {
-          notesCount: cleanData.notes.length,
-          learningCount: cleanData.learning.length
-        });
-        return cleanData;      } catch (error) {
-        console.warn('Could not read from file system, using static data as fallback:', error);
-        // Use static data as fallback for serverless environments
+        this.data = cleanData;        return cleanData;
+      } catch {
+        // Use static data as fallback
         const cleanData = {
           profile: STATIC_PORTFOLIO_DATA.profile || defaultData.profile,
           links: STATIC_PORTFOLIO_DATA.links || defaultData.links,
@@ -190,15 +176,12 @@ export class PortfolioDatabase {
           learning: Array.isArray(STATIC_PORTFOLIO_DATA.learning) ? STATIC_PORTFOLIO_DATA.learning : [],
         };
         this.data = cleanData;
-        console.log('Data loaded from static data fallback:', {
-          notesCount: cleanData.notes.length,
-          learningCount: cleanData.learning.length
-        });
         return cleanData;
       }
-    }// If no cached data and file read failed, return empty structure
+    }
+
+    // If no cached data and file read failed, return empty structure
     if (!this.data) {
-      console.log('No data available, returning empty structure');
       this.data = { ...defaultData };
     }
     
@@ -218,12 +201,17 @@ export class PortfolioDatabase {
         const fs = await import('fs');
         const path = await import('path');
         const dataPath = path.join(process.cwd(), 'data', 'portfolio.json');
+        
+        // Ensure data directory exists
+        const dataDir = path.dirname(dataPath);
+        if (!fs.existsSync(dataDir)) {
+          fs.mkdirSync(dataDir, { recursive: true });
+        }
+        
         fs.writeFileSync(dataPath, JSON.stringify(this.data, null, 2));
         return true;
-      } catch (error) {
-        console.warn('Could not write to file system (serverless environment):', error);
-        // In serverless, data is only kept in memory for the request lifecycle
-        // You would integrate with a real database here
+      } catch {
+        // In serverless environments or when filesystem is unavailable
         return false;
       }
     }
@@ -236,7 +224,15 @@ export class PortfolioDatabase {
     this.data = null;
   }  // Method to check if we're in a serverless environment
   isServerless(): boolean {
-    return !!(process.env.VERCEL || process.env.NETLIFY || process.env.AWS_LAMBDA_FUNCTION_NAME) || 
-           !process.env.NODE_ENV?.includes('development');
+    // Check for explicit serverless environment variables
+    const hasServerlessEnv = !!(process.env.VERCEL || process.env.NETLIFY || process.env.AWS_LAMBDA_FUNCTION_NAME);
+    
+    // Check if we're in local development
+    const isLocalDev = process.env.NODE_ENV === 'development' || 
+                       process.env.NODE_ENV?.includes('dev') || 
+                       (!process.env.NODE_ENV && typeof window === 'undefined');
+    
+    // Only consider serverless if we have explicit serverless env vars AND we're not in local dev
+    return hasServerlessEnv && !isLocalDev;
   }
 }

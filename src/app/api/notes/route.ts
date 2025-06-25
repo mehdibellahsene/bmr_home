@@ -17,13 +17,11 @@ function checkAuth(request: NextRequest) {
 
 export async function GET() {
   try {
-    console.log('Fetching notes...');
     const db = PortfolioDatabase.getInstance();
     // Clear cache to ensure fresh data
     db.clearCache();
     const data = await db.getData();
     const notes = Array.isArray(data.notes) ? data.notes : [];
-    console.log(`Found ${notes.length} notes`);
     return NextResponse.json(notes);
   } catch (error) {
     console.error('Failed to read notes:', error);
@@ -49,17 +47,20 @@ export async function POST(request: NextRequest) {
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
-    
-    const updatedNotes = Array.isArray(data.notes) ? [...data.notes] : [];
+      const updatedNotes = Array.isArray(data.notes) ? [...data.notes] : [];
     updatedNotes.unshift(newNote); // Add to beginning
     
     const updateSuccess = await db.updateData({ notes: updatedNotes });
     
-    if (!updateSuccess && db.isServerless()) {
-      return NextResponse.json({ 
-        ...newNote,
-        warning: 'Note created but not persisted in serverless environment'
-      });
+    if (!updateSuccess) {
+      if (db.isServerless()) {
+        return NextResponse.json({ 
+          ...newNote,
+          warning: 'Note created but not persisted in serverless environment'
+        });
+      } else {
+        return NextResponse.json({ error: 'Failed to persist note' }, { status: 500 });
+      }
     }
     
     return NextResponse.json(newNote);
@@ -91,17 +92,20 @@ export async function PUT(request: NextRequest) {
       content: body.content,
       publishedAt: body.publishedAt,
       updatedAt: new Date().toISOString(),
-    };
+    };    const updateSuccess = await db.updateData({ notes });
     
-    const updateSuccess = await db.updateData({ notes });
-    
-    if (!updateSuccess && db.isServerless()) {
-      return NextResponse.json({ 
-        ...notes[noteIndex],
-        warning: 'Note updated but not persisted in serverless environment'
-      });
+    if (!updateSuccess) {
+      if (db.isServerless()) {
+        return NextResponse.json({ 
+          ...notes[noteIndex],
+          warning: 'Note updated but not persisted in serverless environment'
+        });
+      } else {
+        return NextResponse.json({ error: 'Failed to persist note update' }, { status: 500 });
+      }
     }
-      return NextResponse.json(notes[noteIndex]);
+    
+    return NextResponse.json(notes[noteIndex]);
   } catch (error) {
     console.error('Failed to update note:', error);
     return NextResponse.json({ error: 'Failed to update note' }, { status: 500 });

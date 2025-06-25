@@ -64,16 +64,18 @@ export async function PUT(
       description: body.description,
       type: body.type,
       date: body.date,
-    };
-    
-    learning[learningIndex] = updatedLearning;
+    };    learning[learningIndex] = updatedLearning;
     const updateSuccess = await db.updateData({ learning });
     
-    if (!updateSuccess && db.isServerless()) {
-      return NextResponse.json({ 
-        ...updatedLearning,
-        warning: 'Learning updated but not persisted in serverless environment'
-      });
+    if (!updateSuccess) {
+      if (db.isServerless()) {
+        return NextResponse.json({ 
+          ...updatedLearning,
+          warning: 'Learning updated but not persisted in serverless environment'
+        });
+      } else {
+        return NextResponse.json({ error: 'Failed to persist learning update' }, { status: 500 });
+      }
     }
     
     return NextResponse.json(updatedLearning);
@@ -101,16 +103,18 @@ export async function DELETE(
     
     if (learningIndex === -1) {
       return NextResponse.json({ error: 'Learning item not found' }, { status: 404 });
-    }
-    
-    learning.splice(learningIndex, 1);
+    }    learning.splice(learningIndex, 1);
     const updateSuccess = await db.updateData({ learning });
     
-    if (!updateSuccess && db.isServerless()) {
-      return NextResponse.json({ 
-        success: true,
-        warning: 'Learning deleted but not persisted in serverless environment'
-      });
+    if (!updateSuccess) {
+      if (db.isServerless()) {
+        return NextResponse.json({ 
+          success: true,
+          warning: 'Learning deleted but not persisted in serverless environment'
+        });
+      } else {
+        return NextResponse.json({ error: 'Failed to persist learning deletion' }, { status: 500 });
+      }
     }
     
     return NextResponse.json({ message: 'Learning item deleted successfully' });

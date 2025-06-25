@@ -33,11 +33,8 @@ export default function AdminDashboard() {
 
   const fetchData = useCallback(async () => {
     if (!mounted) return;
-    
-    setLoading(true);
+      setLoading(true);
     setError(null);
-    
-    console.log('Starting data fetch...');
     
     try {
       // Add timestamp to prevent caching issues

@@ -101,16 +101,18 @@ export async function DELETE(
     
     if (noteIndex === -1) {
       return NextResponse.json({ error: 'Note not found' }, { status: 404 });
-    }
-    
-    notes.splice(noteIndex, 1);
+    }    notes.splice(noteIndex, 1);
     const updateSuccess = await db.updateData({ notes });
     
-    if (!updateSuccess && db.isServerless()) {
-      return NextResponse.json({ 
-        success: true,
-        warning: 'Note deleted but not persisted in serverless environment'
-      });
+    if (!updateSuccess) {
+      if (db.isServerless()) {
+        return NextResponse.json({ 
+          success: true,
+          warning: 'Note deleted but not persisted in serverless environment'
+        });
+      } else {
+        return NextResponse.json({ error: 'Failed to persist note deletion' }, { status: 500 });
+      }
     }
     
     return NextResponse.json({ message: 'Note deleted successfully' });
