@@ -23,12 +23,8 @@ interface PortfolioData {
   };
 }
 
-export default function Notes() {
-  const [notes, setNotes] = useState<Note[]>([]);
-  const [portfolioData, setPortfolioData] = useState<PortfolioData>({
-    profile: { name: "Your Name" },
-    links: { work: [], presence: [] }
-  });
+export default function Notes() {  const [notes, setNotes] = useState<Note[]>([]);
+  const [portfolioData, setPortfolioData] = useState<PortfolioData | null>(null);
   const [selectedNote, setSelectedNote] = useState<Note | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -36,17 +32,13 @@ export default function Notes() {
   useEffect(() => {
     fetchData();
   }, []);
-
   const fetchData = async () => {
     try {
       const response = await fetch('/api/data');
       if (response.ok) {
         const data = await response.json();
         setNotes(data.notes || []);
-        setPortfolioData({
-          profile: data.profile,
-          links: data.links
-        });
+        setPortfolioData(data);
         // Auto-select first note if available
         if (data.notes && data.notes.length > 0) {
           setSelectedNote(data.notes[0]);
@@ -66,13 +58,21 @@ export default function Notes() {
   const toggleFullscreen = () => {
     setIsFullscreen(!isFullscreen);
   };
-
   if (loading) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
         <div className="text-white">Loading...</div>
       </div>
-    );  }
+    );
+  }
+
+  if (!portfolioData) {
+    return (
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <div className="text-white">No portfolio data available</div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-black flex">

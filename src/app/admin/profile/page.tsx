@@ -25,7 +25,8 @@ interface Links {
   presence: LinkItem[];
 }
 
-export default function AdminProfile() {  const [profile, setProfile] = useState<Profile>({
+export default function AdminProfile() {
+  const [profile, setProfile] = useState<Profile>({
     name: '',
     title: '',
     location: '',
@@ -36,19 +37,25 @@ export default function AdminProfile() {  const [profile, setProfile] = useState
   });
   const [links, setLinks] = useState<Links>({ work: [], presence: [] });
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);  const [message, setMessage] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState('');
+  const [dataLoaded, setDataLoaded] = useState(false);
 
   useEffect(() => {
     fetchData();
   }, []);
-
   const fetchData = async () => {
     try {
       const response = await fetch('/api/data');
       if (response.ok) {
         const data = await response.json();
-        setProfile(data.profile);
-        setLinks(data.links);
+        if (data.profile) {
+          setProfile(data.profile);
+          setDataLoaded(true);
+        }
+        if (data.links) {
+          setLinks(data.links);
+        }
       }
     } catch (error) {
       console.error('Failed to fetch data:', error);
@@ -134,11 +141,18 @@ export default function AdminProfile() {  const [profile, setProfile] = useState
       ...prev,
       [section]: prev[section].filter(link => link.id !== id)
     }));
-  };
-  if (loading) {
+  };  if (loading) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
         <div className="text-gray-300">Loading...</div>
+      </div>
+    );
+  }
+
+  if (!dataLoaded) {
+    return (
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <div className="text-gray-300">No profile data available</div>
       </div>
     );
   }

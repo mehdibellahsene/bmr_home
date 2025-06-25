@@ -31,43 +31,17 @@ interface PortfolioData {
 
 const defaultData: PortfolioData = {
   profile: {
-    name: "Your Name",
-    title: "Full-stack developer specializing in the modern JavaScript stack, with startup and open-source experience. Very eager to learn, strongly communicative, self-driven to solve and create.",
-    location: "Your City, Your Country",
-    email: "your-email@example.com",
-    skills: "TypeScript, Node.js, React.js, SQL, Electron",
-    interests: "Type systems, compilers, codegen, OpenAPI",
+    name: "",
+    title: "",
+    location: "",
+    email: "",
+    skills: "",
+    interests: "",
     homeImage: ""
   },
   links: {
-    work: [
-      {
-        id: "1",
-        name: "Your Company",
-        url: "https://your-company.com",
-        icon: "🔗"
-      },
-      {
-        id: "2",
-        name: "Your Project",
-        url: "https://your-project.com",
-        icon: "📊"
-      }
-    ],
-    presence: [
-      {
-        id: "3",
-        name: "GitHub",
-        url: "https://github.com/yourusername",
-        icon: "🐙"
-      },
-      {
-        id: "4",
-        name: "LinkedIn",
-        url: "https://linkedin.com/in/yourprofile",
-        icon: "💼"
-      }
-    ]
+    work: [],
+    presence: []
   },
   notes: [],
   learning: []
@@ -95,29 +69,27 @@ export class PortfolioDatabase {
         
         // Check if file exists
         if (!fs.existsSync(dataPath)) {
-          console.warn('Portfolio data file does not exist, creating with default data');
-          fs.writeFileSync(dataPath, JSON.stringify(defaultData, null, 2));
-          this.data = { ...defaultData };
-          return this.data;
+          console.warn('Portfolio data file does not exist');
+          return defaultData; // Return empty structure instead of creating file
         }
         
         const fileContents = fs.readFileSync(dataPath, 'utf8');
         const parsedData = JSON.parse(fileContents) as PortfolioData;
         
-        // Ensure required fields exist
-        const mergedData = {
-          ...defaultData,
-          ...parsedData,
+        // Only ensure required arrays exist, don't merge with default profile/links data
+        const cleanData = {
+          profile: parsedData.profile || defaultData.profile,
+          links: parsedData.links || defaultData.links,
           notes: Array.isArray(parsedData.notes) ? parsedData.notes : [],
           learning: Array.isArray(parsedData.learning) ? parsedData.learning : [],
         };
         
-        this.data = mergedData; // Update cache
+        this.data = cleanData; // Update cache
         console.log('Data loaded from file system:', {
-          notesCount: mergedData.notes.length,
-          learningCount: mergedData.learning.length
+          notesCount: cleanData.notes.length,
+          learningCount: cleanData.learning.length
         });
-        return mergedData;
+        return cleanData;
       } catch (error) {
         console.warn('Could not read from file system:', error);
         // If file read fails but we have cached data, use it
@@ -126,11 +98,9 @@ export class PortfolioDatabase {
           return this.data;
         }
       }
-    }
-
-    // If no cached data and file read failed, use default data
+    }    // If no cached data and file read failed, return empty structure
     if (!this.data) {
-      console.log('Using default data');
+      console.log('No data available, returning empty structure');
       this.data = { ...defaultData };
     }
     

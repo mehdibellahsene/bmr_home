@@ -20,47 +20,17 @@ interface PortfolioData {
   };
 }
 
-export default function Home() {
-  const [data, setData] = useState<PortfolioData>({
-    profile: {
-      name: "Your Name",
-      title: "Full-stack developer specializing in the modern JavaScript stack, with startup and open-source experience. Very eager to learn, strongly communicative, self-driven to solve and create.",
-      location: "Your City, Your Country",
-      email: "your-email@example.com",
-      skills: "TypeScript, Node.js, React.js, SQL, Electron",
-      interests: "Type systems, compilers, codegen, OpenAPI",
-      homeImage: ""
-    },
-    links: {
-      work: [],
-      presence: []
-    }
-  });  const [loading, setLoading] = useState(true);
+export default function Home() {  const [data, setData] = useState<PortfolioData | null>(null);const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     fetchData();
   }, []);
-
   const fetchData = async () => {
     try {
       const response = await fetch('/api/data');
       if (response.ok) {
         const portfolioData = await response.json();
-        setData({
-          profile: portfolioData.profile || {
-            name: "Your Name",
-            title: "Full-stack developer specializing in the modern JavaScript stack, with startup and open-source experience. Very eager to learn, strongly communicative, self-driven to solve and create.",
-            location: "Your City, Your Country",
-            email: "your-email@example.com",
-            skills: "TypeScript, Node.js, React.js, SQL, Electron",
-            interests: "Type systems, compilers, codegen, OpenAPI",
-            homeImage: ""
-          },
-          links: portfolioData.links || {
-            work: [],
-            presence: []
-          }
-        });
+        setData(portfolioData);
       }
     } catch (error) {
       console.error('Error fetching portfolio data:', error);
@@ -68,11 +38,18 @@ export default function Home() {
       setLoading(false);
     }
   };
-
   if (loading) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
         <div className="text-white">Loading...</div>
+      </div>
+    );
+  }
+
+  if (!data) {
+    return (
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <div className="text-white">No portfolio data available</div>
       </div>
     );
   }return (

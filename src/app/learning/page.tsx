@@ -22,28 +22,20 @@ interface PortfolioData {
   };
 }
 
-export default function Learning() {
-  const [learning, setLearning] = useState<Learning[]>([]);
-  const [portfolioData, setPortfolioData] = useState<PortfolioData>({
-    profile: { name: "Your Name" },
-    links: { work: [], presence: [] }
-  });
+export default function Learning() {  const [learning, setLearning] = useState<Learning[]>([]);
+  const [portfolioData, setPortfolioData] = useState<PortfolioData | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     fetchData();
   }, []);
-
   const fetchData = async () => {
     try {
       const response = await fetch('/api/data');
       if (response.ok) {
         const data = await response.json();
         setLearning(data.learning || []);
-        setPortfolioData({
-          profile: data.profile,
-          links: data.links
-        });
+        setPortfolioData(data);
       }
     } catch (error) {
       console.error('Error fetching learning data:', error);
@@ -98,11 +90,18 @@ function getTypeColor(type: string): string {
 }
 
   const groupedLearning = groupLearningByMonth(learning);
-
   if (loading) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
         <div className="text-white">Loading...</div>
+      </div>
+    );
+  }
+
+  if (!portfolioData) {
+    return (
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <div className="text-white">No portfolio data available</div>
       </div>
     );
   }return (
