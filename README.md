@@ -145,3 +145,56 @@ All content is stored in `data/portfolio.json`:
 - Cookie-based authentication
 - Middleware route protection
 - Admin-only API endpoints
+
+## Deployment
+
+### Vercel (Recommended)
+
+This project is optimized for deployment on Vercel and other serverless platforms. The data system automatically detects serverless environments and uses static data instead of file system operations.
+
+**Key Features for Serverless:**
+- Automatic serverless environment detection
+- Static data fallback for production builds
+- No file system dependencies in production
+- Seamless development-to-production workflow
+
+**To deploy:**
+1. Push your code to GitHub
+2. Connect your repository to Vercel
+3. Deploy automatically
+
+**Important Notes:**
+- In serverless environments (Vercel, Netlify), data updates through the admin panel are temporary (session-only)
+- For persistent data updates in production, consider integrating with:
+  - PlanetScale (MySQL)
+  - Supabase (PostgreSQL) 
+  - MongoDB Atlas
+  - Airtable API
+  - Any other database service
+
+### Local Development vs Production
+
+- **Development**: Uses `data/portfolio.json` file system operations
+- **Production (Serverless)**: Uses static data embedded in the build
+- **Data Updates**: 
+  - Development: Persistent to JSON file
+  - Production: Session-only (lost on function restart)
+
+### Updating Static Data for Production
+
+When you update content and want it reflected in the deployed version:
+
+1. Update `data/portfolio.json` locally
+2. Update the `STATIC_PORTFOLIO_DATA` constant in `src/lib/database.ts`
+3. Commit and push changes
+4. Redeploy to Vercel
+
+## Environment Variables
+
+Create a `.env.local` file for local development:
+
+```env
+NODE_ENV=development
+```
+
+For production, Vercel automatically sets appropriate environment variables.

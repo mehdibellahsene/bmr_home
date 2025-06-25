@@ -10,7 +10,7 @@ const josefinSans = Josefin_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "Your Portfolio - Full-stack Developer",
+  title: process.env.WEBSITE_BROWSER_NAME || "Your Portfolio - Full-stack Developer",
   description: "Full-stack developer specializing in modern web technologies with startup and open-source experience.",
   icons: {
     icon: [
