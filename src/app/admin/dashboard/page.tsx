@@ -29,6 +29,14 @@ export default function AdminDashboard() {
   const [error, setError] = useState<string | null>(null);
   const [retryCount, setRetryCount] = useState(0);
   const [mounted, setMounted] = useState(false);
+  // Database management state
+  const [dbStatus, setDbStatus] = useState<{
+    currentMode: string;
+    mongoDBConfigured: boolean;
+    canMigrate: boolean;
+  } | null>(null);
+  const [migrating, setMigrating] = useState(false);
+  const [migrationMessage, setMigrationMessage] = useState<string | null>(null);
   const router = useRouter();
 
   const fetchData = useCallback(async () => {
@@ -39,6 +47,13 @@ export default function AdminDashboard() {
     try {
       // Add timestamp to prevent caching issues
       const timestamp = Date.now();
+      
+      // Fetch database status
+      const dbStatusRes = await fetch(`/api/migrate?t=${timestamp}`);
+      if (dbStatusRes.ok) {
+        const dbData = await dbStatusRes.json();
+        setDbStatus(dbData);
+      }
       
       // Fetch both with individual error handling
       const notesPromise = fetch(`/api/notes?t=${timestamp}`, {
@@ -164,6 +179,58 @@ export default function AdminDashboard() {
       router.push('/admin/login');
     } catch (error) {
       console.error('Logout error:', error);
+    }
+  };
+
+  const handleMigrateToMongoDB = async () => {
+    setMigrating(true);
+    setMigrationMessage(null);
+    
+    try {
+      const response = await fetch('/api/migrate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      const result = await response.json();
+      
+      if (result.success) {
+        setMigrationMessage('✅ Successfully migrated to MongoDB!');
+        // Refresh data
+        fetchData();
+      } else {
+        setMigrationMessage(`❌ Migration failed: ${result.message}`);
+      }
+    } catch (error) {
+      setMigrationMessage(`❌ Migration error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setMigrating(false);
+    }
+  };
+
+  const handleSwitchDatabase = async (mode: 'mongodb' | 'filesystem') => {
+    try {
+      const response = await fetch('/api/database-mode', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ mode }),
+      });
+      
+      const result = await response.json();
+      
+      if (result.success) {
+        setMigrationMessage(`✅ Switched to ${mode} mode`);
+        // Refresh data
+        fetchData();
+      } else {
+        setMigrationMessage(`❌ Failed to switch database mode`);
+      }
+    } catch (error) {
+      setMigrationMessage(`❌ Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   };
 
@@ -438,6 +505,107 @@ export default function AdminDashboard() {
                     </div>
                   </div>
                 </div>
+              </div>
+            </div>
+
+            {/* Database Management Section */}
+            <div className="bg-gray-900 overflow-hidden shadow-2xl rounded-xl border border-gray-800 card-hover animate-fadeIn lg:col-span-2 xl:col-span-3" style={{animationDelay: '0.4s'}}>
+              <div className="px-6 py-6">
+                <h2 className="text-xl font-semibold text-white mb-6 flex items-center">
+                  <div className="p-2 bg-gray-700 rounded-lg mr-3">
+                    <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4" />
+                    </svg>
+                  </div>
+                  🗄️ Database Management
+                </h2>
+                
+                {dbStatus && (
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                    <div className="bg-gray-800 p-4 rounded-xl border border-gray-700">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-gray-300 text-sm font-medium">Current Mode</p>
+                          <p className="text-lg font-bold text-white capitalize">{dbStatus.currentMode}</p>
+                        </div>
+                        <div className="text-2xl">
+                          {dbStatus.currentMode === 'mongodb' ? '🍃' : '📁'}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="bg-gray-800 p-4 rounded-xl border border-gray-700">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-gray-300 text-sm font-medium">MongoDB Status</p>
+                          <p className="text-lg font-bold text-white">
+                            {dbStatus.mongoDBConfigured ? 'Configured' : 'Not Set'}
+                          </p>
+                        </div>
+                        <div className="text-2xl">
+                          {dbStatus.mongoDBConfigured ? '✅' : '❌'}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="bg-gray-800 p-4 rounded-xl border border-gray-700">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-gray-300 text-sm font-medium">Migration</p>
+                          <p className="text-lg font-bold text-white">
+                            {dbStatus.canMigrate ? 'Available' : 'N/A'}
+                          </p>
+                        </div>
+                        <div className="text-2xl">
+                          {dbStatus.canMigrate ? '🔄' : '🚫'}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {migrationMessage && (
+                  <div className="mb-4 p-4 bg-gray-800 rounded-lg border border-gray-700">
+                    <p className="text-sm text-white">{migrationMessage}</p>
+                  </div>
+                )}
+
+                <div className="flex flex-wrap gap-4">
+                  {dbStatus?.canMigrate && dbStatus.currentMode === 'filesystem' && (
+                    <button
+                      onClick={handleMigrateToMongoDB}
+                      disabled={migrating}
+                      className="bg-green-600 text-white px-6 py-3 rounded-lg text-sm font-medium hover:bg-green-700 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {migrating ? '🔄 Migrating...' : '🍃 Migrate to MongoDB'}
+                    </button>
+                  )}
+                  
+                  {dbStatus?.mongoDBConfigured && (
+                    <>
+                      <button
+                        onClick={() => handleSwitchDatabase('mongodb')}
+                        disabled={dbStatus.currentMode === 'mongodb'}
+                        className="bg-blue-600 text-white px-6 py-3 rounded-lg text-sm font-medium hover:bg-blue-700 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        🍃 Switch to MongoDB
+                      </button>
+                      <button
+                        onClick={() => handleSwitchDatabase('filesystem')}
+                        disabled={dbStatus.currentMode === 'filesystem'}
+                        className="bg-orange-600 text-white px-6 py-3 rounded-lg text-sm font-medium hover:bg-orange-700 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        📁 Switch to Filesystem
+                      </button>
+                    </>
+                  )}
+                </div>
+
+                {!dbStatus?.mongoDBConfigured && (
+                  <div className="mt-4 p-4 bg-yellow-900 bg-opacity-50 border border-yellow-700 rounded-lg">
+                    <p className="text-yellow-200 text-sm">
+                      ⚠️ MongoDB is not configured. Please set the MONGODB_URI environment variable to enable MongoDB features.
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
           </div>

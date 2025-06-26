@@ -189,6 +189,75 @@ When you update content and want it reflected in the deployed version:
 3. Commit and push changes
 4. Redeploy to Vercel
 
+## MongoDB Integration
+
+This portfolio now supports MongoDB as an alternative to JSON file storage. MongoDB integration allows for persistent data storage in production environments and better scalability.
+
+### Setup MongoDB
+
+1. **Create a MongoDB Atlas account** at [mongodb.com](https://www.mongodb.com/)
+
+2. **Create a new cluster** and get your connection string
+
+3. **Update your `.env.local` file**:
+   ```env
+   # MongoDB Configuration
+   MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/bmr-portfolio?retryWrites=true&w=majority
+   # Replace username, password, and cluster with your actual values
+   ```
+
+4. **Test the connection**:
+   ```bash
+   npm run db:test
+   ```
+
+5. **Migrate existing data** (if you have data in `data/portfolio.json`):
+   ```bash
+   npm run db:migrate
+   ```
+
+6. **Verify migration**:
+   ```bash
+   npm run db:verify
+   ```
+
+### Database Management Scripts
+
+- `npm run db:test` - Test MongoDB connection
+- `npm run db:migrate` - Migrate data from JSON to MongoDB
+- `npm run db:verify` - Verify data in MongoDB
+
+### Admin Dashboard Integration
+
+The admin dashboard now includes a **Database Management** section where you can:
+- View current database mode (MongoDB or filesystem)
+- Check MongoDB configuration status
+- Migrate data from filesystem to MongoDB
+- Switch between database modes
+
+### Automatic Fallback
+
+The system automatically detects:
+- **Local development**: Prefers MongoDB if configured, falls back to JSON files
+- **Production**: Uses MongoDB if configured, otherwise static data
+- **Serverless**: Automatically handles connection pooling and performance
+
+### Production Deployment
+
+For production with MongoDB:
+
+1. Set the `MONGODB_URI` environment variable in your deployment platform
+2. The system will automatically use MongoDB for data storage
+3. Data updates through the admin panel will be persistent
+
+### Data Models
+
+The MongoDB integration includes these collections:
+- **profiles** - User profile information
+- **links** - Work and social media links
+- **notes** - Blog posts and notes
+- **learnings** - Learning items and progress
+
 ## Environment Variables
 
 Create a `.env.local` file for local development:
