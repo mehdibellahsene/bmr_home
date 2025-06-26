@@ -23,11 +23,12 @@ interface PortfolioData {
 export default function Home() {
   const [data, setData] = useState<PortfolioData | null>(null);
   const [loading, setLoading] = useState(true);
+
   useEffect(() => {
     fetchData();
     
-    // Set up frequent refresh every 5 seconds for immediate updates
-    const interval = setInterval(fetchData, 5000);
+    // Set up periodic refresh every 30 seconds
+    const interval = setInterval(fetchData, 30000);
     
     // Listen for visibility change to refresh when user returns to tab
     const handleVisibilityChange = () => {
@@ -43,25 +44,20 @@ export default function Home() {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, []);
+
   const fetchData = async () => {
     try {
-      // Add multiple cache-busting parameters
+      // Add timestamp and cache-busting headers
       const timestamp = Date.now();
-      const random = Math.random().toString(36).substring(7);
-      const response = await fetch(`/api/data?t=${timestamp}&r=${random}&v=${Date.now()}`, {
+      const response = await fetch(`/api/data?t=${timestamp}`, {
         cache: 'no-store',
         headers: {
-          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Cache-Control': 'no-cache',
           'Pragma': 'no-cache',
-          'Expires': '0',
         },
       });
       if (response.ok) {
         const portfolioData = await response.json();
-        console.log('Home page data refreshed:', {
-          timestamp: new Date().toISOString(),
-          profileName: portfolioData.profile?.name
-        });
         setData(portfolioData);
       }
     } catch (error) {

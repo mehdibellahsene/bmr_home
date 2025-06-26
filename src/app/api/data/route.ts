@@ -13,12 +13,14 @@ export async function GET(request: NextRequest) {
     const url = new URL(request.url);
     const isValidation = url.searchParams.has('validate');
     
-    // Always get fresh database instance to avoid any caching issues
     const db = PortfolioDatabase.getInstance();
     
     if (isValidation) {
+      // Clear cache to ensure fresh data for validation
+      db.clearCache();
+      
       const data = await db.getData();
-      const validation = {
+        const validation = {
         status: 'success',
         timestamp: new Date().toISOString(),
         data: {
@@ -38,21 +40,20 @@ export async function GET(request: NextRequest) {
       return NextResponse.json(validation);
     }
     
-    // Regular data request - always fresh data
+    // For regular requests, always clear cache to ensure fresh data
+    db.clearCache();
+    
+    // Regular data request
     const data = await db.getData();
     // Remove admin credentials from response
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { admin: _admin, ...publicData } = data as unknown as Record<string, unknown>;
     
-    // Add cache-busting headers and timestamp
-    const response = NextResponse.json({
-      ...publicData,
-      _timestamp: Date.now(), // Add timestamp to force fresh data
-    });
+    // Add cache-busting headers
+    const response = NextResponse.json(publicData);
     response.headers.set('Cache-Control', 'no-cache, no-store, must-revalidate');
     response.headers.set('Pragma', 'no-cache');
     response.headers.set('Expires', '0');
-    response.headers.set('ETag', `"${Date.now()}"`); // Unique ETag for each response
     
     return response;
   } catch (error) {
@@ -75,8 +76,10 @@ export async function POST(request: NextRequest) {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { admin: _admin, ...updateData } = body;
 
-    console.log('Updating data:', updateData);
     const updateSuccess = await db.updateData(updateData);
+    
+    // Always clear cache after update to ensure fresh data for subsequent requests
+    db.clearCache();
     
     if (!updateSuccess) {
       if (db.isServerless()) {
@@ -91,12 +94,7 @@ export async function POST(request: NextRequest) {
       }
     }
     
-    console.log('Data update successful');
-    return NextResponse.json({ 
-      success: true, 
-      persisted: updateSuccess,
-      timestamp: Date.now()
-    });
+    return NextResponse.json({ success: true, persisted: updateSuccess });
   } catch (error) {
     console.error('Failed to update data:', error);
     return NextResponse.json({ error: 'Failed to update data' }, { status: 500 });

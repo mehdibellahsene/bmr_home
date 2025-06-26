@@ -29,11 +29,12 @@ export default function Notes() {
   const [selectedNote, setSelectedNote] = useState<Note | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [loading, setLoading] = useState(true);
+
   useEffect(() => {
     fetchData();
     
-    // Set up frequent refresh every 5 seconds for immediate updates
-    const interval = setInterval(fetchData, 5000);
+    // Set up periodic refresh every 30 seconds
+    const interval = setInterval(fetchData, 30000);
     
     // Listen for visibility change to refresh when user returns to tab
     const handleVisibilityChange = () => {
@@ -51,23 +52,17 @@ export default function Notes() {
   }, []);
 
   const fetchData = async () => {
-    try {      // Add multiple cache-busting parameters
+    try {
+      // Add timestamp and cache-busting headers
       const timestamp = Date.now();
-      const random = Math.random().toString(36).substring(7);
-      const response = await fetch(`/api/data?t=${timestamp}&r=${random}&v=${Date.now()}`, {
+      const response = await fetch(`/api/data?t=${timestamp}`, {
         cache: 'no-store',
         headers: {
-          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Cache-Control': 'no-cache',
           'Pragma': 'no-cache',
-          'Expires': '0',
         },
-      });
-      if (response.ok) {
+      });      if (response.ok) {
         const data = await response.json();
-        console.log('Notes page data refreshed:', {
-          timestamp: new Date().toISOString(),
-          notesCount: data.notes?.length || 0
-        });
         setNotes(data.notes || []);
         setPortfolioData(data);
         // Auto-select first note if available

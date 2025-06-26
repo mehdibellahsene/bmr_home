@@ -145,13 +145,14 @@ export default function AdminDashboard() {
       return () => clearTimeout(timer);
     }
   }, [error, retryCount, mounted, fetchData]);
+
   // Set up periodic refresh to catch updates from admin actions
   useEffect(() => {
     if (mounted) {
       const interval = setInterval(() => {
         console.log('Auto-refreshing dashboard data...');
         fetchData();
-      }, 3000); // Refresh every 3 seconds for immediate feedback
+      }, 10000); // Refresh every 10 seconds
       
       return () => clearInterval(interval);
     }

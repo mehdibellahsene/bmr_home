@@ -62,7 +62,8 @@ export default function AdminProfile() {
     } finally {
       setLoading(false);
     }
-  };  const handleProfileSubmit = async (e: React.FormEvent) => {
+  };
+  const handleProfileSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
     setMessage('');
@@ -75,26 +76,20 @@ export default function AdminProfile() {
       });
 
       if (response.ok) {
-        setMessage('Profile updated successfully! Changes are now live on your public site.');
+        setMessage('Profile updated successfully! Changes will appear on your public site.');
         
-        // Immediately trigger multiple cache-busting requests to ensure all data is fresh
-        const promises = [];
-        for (let i = 0; i < 3; i++) {
-          const timestamp = Date.now() + i;
-          promises.push(
-            fetch(`/api/data?t=${timestamp}&refresh=true`, {
+        // Trigger a cache refresh by fetching fresh data
+        setTimeout(async () => {
+          try {
+            const timestamp = Date.now();
+            await fetch(`/api/data?t=${timestamp}`, {
               cache: 'no-store',
-              headers: { 
-                'Cache-Control': 'no-cache',
-                'Pragma': 'no-cache'
-              }
-            }).catch(() => {}) // Ignore errors for cache refresh
-          );
-        }
-        
-        // Don't wait for cache refresh to complete
-        Promise.all(promises).catch(() => {});
-        
+              headers: { 'Cache-Control': 'no-cache' }
+            });
+          } catch (error) {
+            console.log('Cache refresh request failed, but update was successful:', error);
+          }
+        }, 1000);
       } else {
         throw new Error('Failed to update profile');
       }
@@ -104,7 +99,8 @@ export default function AdminProfile() {
     } finally {
       setSaving(false);
     }
-  };  const handleLinksSubmit = async (e: React.FormEvent) => {
+  };
+  const handleLinksSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
     setMessage('');
@@ -117,26 +113,20 @@ export default function AdminProfile() {
       });
 
       if (response.ok) {
-        setMessage('Links updated successfully! Changes are now live on your public site.');
+        setMessage('Links updated successfully! Changes will appear on your public site.');
         
-        // Immediately trigger multiple cache-busting requests to ensure all data is fresh
-        const promises = [];
-        for (let i = 0; i < 3; i++) {
-          const timestamp = Date.now() + i;
-          promises.push(
-            fetch(`/api/data?t=${timestamp}&refresh=true`, {
+        // Trigger a cache refresh by fetching fresh data
+        setTimeout(async () => {
+          try {
+            const timestamp = Date.now();
+            await fetch(`/api/data?t=${timestamp}`, {
               cache: 'no-store',
-              headers: { 
-                'Cache-Control': 'no-cache',
-                'Pragma': 'no-cache'
-              }
-            }).catch(() => {}) // Ignore errors for cache refresh
-          );
-        }
-        
-        // Don't wait for cache refresh to complete
-        Promise.all(promises).catch(() => {});
-        
+              headers: { 'Cache-Control': 'no-cache' }
+            });
+          } catch (error) {
+            console.log('Cache refresh request failed, but update was successful:', error);
+          }
+        }, 1000);
       } else {
         throw new Error('Failed to update links');
       }
