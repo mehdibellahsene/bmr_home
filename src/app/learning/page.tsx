@@ -1,7 +1,7 @@
 'use client';
 
 import Link from "next/link";
-import { useEffect, useState } from 'react';
+import { useData } from '@/components/DataProvider';
 
 interface Learning {
   id: string;
@@ -12,64 +12,28 @@ interface Learning {
   createdAt: string;
 }
 
-interface PortfolioData {
-  profile: {
-    name: string;
-  };
-  links: {
-    work: Array<{ id: string; name: string; url: string; icon: string }>;
-    presence: Array<{ id: string; name: string; url: string; icon: string }>;
-  };
-}
-
 export default function Learning() {
-  const [learning, setLearning] = useState<Learning[]>([]);
-  const [portfolioData, setPortfolioData] = useState<PortfolioData | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { data, error, refetchData } = useData();
+  
+  const learning = data?.learning || [];
+  const portfolioData = data;
 
-  useEffect(() => {
-    fetchData();
-    
-    // Set up periodic refresh every 30 seconds
-    const interval = setInterval(fetchData, 30000);
-    
-    // Listen for visibility change to refresh when user returns to tab
-    const handleVisibilityChange = () => {
-      if (!document.hidden) {
-        fetchData();
-      }
-    };
-    
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    
-    return () => {
-      clearInterval(interval);
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-    };
-  }, []);
-
-  const fetchData = async () => {
-    try {
-      // Add timestamp and cache-busting headers
-      const timestamp = Date.now();
-      const response = await fetch(`/api/data?t=${timestamp}`, {
-        cache: 'no-store',
-        headers: {
-          'Cache-Control': 'no-cache',
-          'Pragma': 'no-cache',
-        },
-      });
-      if (response.ok) {
-        const data = await response.json();
-        setLearning(data.learning || []);
-        setPortfolioData(data);
-      }
-    } catch (error) {
-      console.error('Error fetching learning data:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  if (error) {
+    return (
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <div className="text-center max-w-md mx-auto p-6">
+          <div className="text-red-400 mb-4">⚠️ Error loading learning data</div>
+          <div className="text-gray-300 mb-4">{error}</div>
+          <button 
+            onClick={() => refetchData(true)}
+            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded transition-colors"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
 
 function groupLearningByMonth(learning: Learning[]) {
   const groups: { [key: string]: Learning[] } = {};
@@ -115,23 +79,17 @@ function getTypeColor(type: string): string {
   };
   return colors[type] || 'bg-gray-600 text-gray-100';
 }
-
   const groupedLearning = groupLearningByMonth(learning);
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-black flex items-center justify-center">
-        <div className="text-white">Loading...</div>
-      </div>
-    );
-  }
 
   if (!portfolioData) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
-        <div className="text-white">No portfolio data available</div>
+        <div className="text-white">Loading learning data...</div>
       </div>
     );
-  }return (
+  }
+
+  return (
     <div className="min-h-screen bg-black flex">
       {/* Sidebar Navigation */}
       <aside className="w-64 bg-black border-r border-gray-800 p-6">

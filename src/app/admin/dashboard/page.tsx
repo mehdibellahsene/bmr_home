@@ -54,15 +54,8 @@ export default function AdminDashboard() {
         const dbData = await dbStatusRes.json();
         setDbStatus(dbData);
       }
-      
-      // Fetch both with individual error handling
-      const notesPromise = fetch(`/api/notes?t=${timestamp}`, {
-        method: 'GET',
-        headers: {
-          'Cache-Control': 'no-cache',
-          'Pragma': 'no-cache',
-        },
-      }).then(async (res) => {
+        // Fetch both with individual error handling
+      const notesPromise = fetch(`/api/notes?t=${timestamp}`).then(async (res) => {
         console.log('Notes response status:', res.status);
         if (res.ok) {
           const data = await res.json();
@@ -77,13 +70,7 @@ export default function AdminDashboard() {
         throw error;
       });
 
-      const learningPromise = fetch(`/api/learning?t=${timestamp}`, {
-        method: 'GET',
-        headers: {
-          'Cache-Control': 'no-cache',
-          'Pragma': 'no-cache',
-        },
-      }).then(async (res) => {
+      const learningPromise = fetch(`/api/learning?t=${timestamp}`).then(async (res) => {
         console.log('Learning response status:', res.status);
         if (res.ok) {
           const data = await res.json();
@@ -167,7 +154,7 @@ export default function AdminDashboard() {
       const interval = setInterval(() => {
         console.log('Auto-refreshing dashboard data...');
         fetchData();
-      }, 10000); // Refresh every 10 seconds
+      }, 60000); // Refresh every 60 seconds (reduced frequency)
       
       return () => clearInterval(interval);
     }

@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import ReactMarkdown from 'react-markdown';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
+import { useData } from '@/components/DataProvider';
 
 interface Note {
   id: string;
@@ -13,89 +14,47 @@ interface Note {
   updatedAt: string;
 }
 
-interface PortfolioData {
-  profile: {
-    name: string;
-  };
-  links: {
-    work: Array<{ id: string; name: string; url: string; icon: string }>;
-    presence: Array<{ id: string; name: string; url: string; icon: string }>;
-  };
-}
-
 export default function Notes() {
-  const [notes, setNotes] = useState<Note[]>([]);
-  const [portfolioData, setPortfolioData] = useState<PortfolioData | null>(null);
+  const { data, error, refetchData } = useData();
   const [selectedNote, setSelectedNote] = useState<Note | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    fetchData();
-    
-    // Set up periodic refresh every 30 seconds
-    const interval = setInterval(fetchData, 30000);
-    
-    // Listen for visibility change to refresh when user returns to tab
-    const handleVisibilityChange = () => {
-      if (!document.hidden) {
-        fetchData();
-      }
-    };
-    
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    
-    return () => {
-      clearInterval(interval);
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-    };
-  }, []);
+  const notes = data?.notes || [];
+  const portfolioData = data;
 
-  const fetchData = async () => {
-    try {
-      // Add timestamp and cache-busting headers
-      const timestamp = Date.now();
-      const response = await fetch(`/api/data?t=${timestamp}`, {
-        cache: 'no-store',
-        headers: {
-          'Cache-Control': 'no-cache',
-          'Pragma': 'no-cache',
-        },
-      });      if (response.ok) {
-        const data = await response.json();
-        setNotes(data.notes || []);
-        setPortfolioData(data);
-        // Auto-select first note if available
-        if (data.notes && data.notes.length > 0) {
-          setSelectedNote(data.notes[0]);
-        }
-      }
-    } catch (error) {
-      console.error('Error fetching data:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  // Auto-select first note if available and none selected
+  if (notes.length > 0 && !selectedNote) {
+    setSelectedNote(notes[0]);
+  }
 
-  const handleNoteSelect = (note: Note) => {
-    setSelectedNote(note);
-  };
-
-  const toggleFullscreen = () => {
-    setIsFullscreen(!isFullscreen);
-  };
-  if (loading) {
+  if (error) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
-        <div className="text-white">Loading...</div>
+        <div className="text-center max-w-md mx-auto p-6">
+          <div className="text-red-400 mb-4">⚠️ Error loading notes</div>
+          <div className="text-gray-300 mb-4">{error}</div>
+          <button 
+            onClick={() => refetchData(true)}
+            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded transition-colors"
+          >
+            Retry
+          </button>
+        </div>
       </div>
     );
   }
 
+  const handleNoteSelect = (note: Note) => {
+    setSelectedNote(note);
+  };
+  const toggleFullscreen = () => {
+    setIsFullscreen(!isFullscreen);
+  };
+
   if (!portfolioData) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
-        <div className="text-white">No portfolio data available</div>
+        <div className="text-white">Loading portfolio data...</div>
       </div>
     );
   }

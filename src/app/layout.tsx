@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { Josefin_Sans } from "next/font/google";
+import { LoadingProvider } from "@/components/LoadingProvider";
+import { DataProvider } from "@/components/DataProvider";
 import "./globals.css";
 
 const josefinSans = Josefin_Sans({
@@ -32,7 +34,11 @@ export default function RootLayout({
       <body
         className={`${josefinSans.variable} antialiased bg-background text-foreground`}
       >
-        {children}
+        <LoadingProvider>
+          <DataProvider>
+            {children}
+          </DataProvider>
+        </LoadingProvider>
       </body>
     </html>
   );

@@ -18,11 +18,12 @@ function checkAuth(request: NextRequest) {
 export async function GET() {
   try {
     const db = PortfolioDatabase.getInstance();
-    // Clear cache to ensure fresh data
-    db.clearCache();
     const data = await db.getData();
     const learning = Array.isArray(data.learning) ? data.learning : [];
-    return NextResponse.json(learning);
+    
+    const response = NextResponse.json(learning);
+    response.headers.set('Cache-Control', 'public, max-age=30, stale-while-revalidate=120');
+    return response;
   } catch (error) {
     console.error('Failed to read learning:', error);
     return NextResponse.json({ error: 'Failed to read learning' }, { status: 500 });

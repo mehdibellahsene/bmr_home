@@ -2,97 +2,10 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { useEffect, useState } from 'react';
-
-interface PortfolioData {
-  profile: {
-    name: string;
-    title: string;
-    location: string;
-    email: string;
-    skills: string;
-    interests: string;
-    homeImage?: string;
-  };
-  links: {
-    work: Array<{ id: string; name: string; url: string; icon: string }>;
-    presence: Array<{ id: string; name: string; url: string; icon: string }>;
-  };
-}
+import { useData } from '@/components/DataProvider';
 
 export default function Home() {
-  const [data, setData] = useState<PortfolioData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  useEffect(() => {
-    fetchData();
-    
-    // Set up periodic refresh every 5 minutes (reduced frequency)
-    const interval = setInterval(fetchData, 300000);
-    
-    // Listen for visibility change to refresh when user returns to tab
-    const handleVisibilityChange = () => {
-      if (!document.hidden) {
-        fetchData();
-      }
-    };
-    
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    
-    return () => {
-      clearInterval(interval);
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-    };
-  }, []);
-  const fetchData = async () => {
-    try {
-      setError(null); // Clear any previous errors
-      
-      // Create an AbortController for timeout
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
-      
-      const response = await fetch('/api/data', {
-        cache: 'no-store',
-        signal: controller.signal,
-        headers: {
-          'Cache-Control': 'no-cache',
-          'Pragma': 'no-cache',
-        },
-      });
-      
-      clearTimeout(timeoutId);
-      
-      if (response.ok) {
-        const portfolioData = await response.json();
-        setData(portfolioData);
-      } else {
-        const errorMsg = `API error: ${response.status} ${response.statusText}`;
-        console.error(errorMsg);
-        setError(errorMsg);
-      }
-    } catch (error) {
-      let errorMsg = 'Unknown error occurred';
-      if (error instanceof Error && error.name === 'AbortError') {
-        errorMsg = 'Request timed out - please check your connection';
-      } else if (error instanceof Error) {
-        errorMsg = `Network error: ${error.message}`;
-      }
-      console.error('Error fetching portfolio data:', error);
-      setError(errorMsg);
-    } finally {
-      setLoading(false);
-    }
-  };  if (loading) {
-    return (
-      <div className="min-h-screen bg-black flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white mx-auto mb-4"></div>
-          <div className="text-white">Loading portfolio...</div>
-        </div>
-      </div>
-    );
-  }
+  const { data, error, refetchData } = useData();
 
   if (error) {
     return (
@@ -101,11 +14,7 @@ export default function Home() {
           <div className="text-red-400 mb-4">⚠️ Error loading portfolio</div>
           <div className="text-gray-300 mb-4">{error}</div>
           <button 
-            onClick={() => {
-              setLoading(true);
-              setError(null);
-              fetchData();
-            }}
+            onClick={() => refetchData(true)}
             className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded transition-colors"
           >
             Retry
@@ -114,15 +23,18 @@ export default function Home() {
       </div>
     );
   }
-
   if (!data) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
-        <div className="text-white">No portfolio data available</div>
+        <div className="text-center">
+          <div className="text-white">No portfolio data available</div>
+        </div>
       </div>
     );
-  }return (
-    <div className="min-h-screen bg-black flex">      {/* Sidebar Navigation */}
+  }
+
+  return (
+    <div className="min-h-screen bg-black flex">{/* Sidebar Navigation */}
       <aside className="w-64 bg-black border-r border-gray-800 p-6 shadow-xl">
         <div className="mb-8">
           <h1 className="text-xl font-semibold text-white">{data.profile.name}</h1>

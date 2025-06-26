@@ -17,6 +17,12 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  // Enable static optimization
+  output: 'standalone',
+  // Enable compression
+  compress: true,
+  // External packages optimization
+  serverExternalPackages: ['mongoose'],
 };
 
 export default nextConfig;
