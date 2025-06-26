@@ -13,14 +13,12 @@ export async function GET(request: NextRequest) {
     const url = new URL(request.url);
     const isValidation = url.searchParams.has('validate');
     
+    // Always get fresh database instance to avoid any caching issues
     const db = PortfolioDatabase.getInstance();
     
     if (isValidation) {
-      // Clear cache to ensure fresh data for validation
-      db.clearCache();
-      
       const data = await db.getData();
-        const validation = {
+      const validation = {
         status: 'success',
         timestamp: new Date().toISOString(),
         data: {
@@ -40,12 +38,23 @@ export async function GET(request: NextRequest) {
       return NextResponse.json(validation);
     }
     
-    // Regular data request
+    // Regular data request - always fresh data
     const data = await db.getData();
     // Remove admin credentials from response
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { admin: _admin, ...publicData } = data as unknown as Record<string, unknown>;
-    return NextResponse.json(publicData);
+    
+    // Add cache-busting headers and timestamp
+    const response = NextResponse.json({
+      ...publicData,
+      _timestamp: Date.now(), // Add timestamp to force fresh data
+    });
+    response.headers.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+    response.headers.set('Pragma', 'no-cache');
+    response.headers.set('Expires', '0');
+    response.headers.set('ETag', `"${Date.now()}"`); // Unique ETag for each response
+    
+    return response;
   } catch (error) {
     console.error('Failed to read data:', error);
     return NextResponse.json({ error: 'Failed to read data' }, { status: 500 });
@@ -64,7 +73,10 @@ export async function POST(request: NextRequest) {
     
     // Filter out admin credentials from updates
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { admin: _admin, ...updateData } = body;    const updateSuccess = await db.updateData(updateData);
+    const { admin: _admin, ...updateData } = body;
+
+    console.log('Updating data:', updateData);
+    const updateSuccess = await db.updateData(updateData);
     
     if (!updateSuccess) {
       if (db.isServerless()) {
@@ -79,7 +91,12 @@ export async function POST(request: NextRequest) {
       }
     }
     
-    return NextResponse.json({ success: true, persisted: updateSuccess });
+    console.log('Data update successful');
+    return NextResponse.json({ 
+      success: true, 
+      persisted: updateSuccess,
+      timestamp: Date.now()
+    });
   } catch (error) {
     console.error('Failed to update data:', error);
     return NextResponse.json({ error: 'Failed to update data' }, { status: 500 });

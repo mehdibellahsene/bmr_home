@@ -49,8 +49,10 @@ export async function POST(request: NextRequest) {
     };
       const updatedNotes = Array.isArray(data.notes) ? [...data.notes] : [];
     updatedNotes.unshift(newNote); // Add to beginning
+      const updateSuccess = await db.updateData({ notes: updatedNotes });
     
-    const updateSuccess = await db.updateData({ notes: updatedNotes });
+    // Always clear cache after update
+    db.clearCache();
     
     if (!updateSuccess) {
       if (db.isServerless()) {
@@ -93,6 +95,9 @@ export async function PUT(request: NextRequest) {
       publishedAt: body.publishedAt,
       updatedAt: new Date().toISOString(),
     };    const updateSuccess = await db.updateData({ notes });
+    
+    // Always clear cache after update
+    db.clearCache();
     
     if (!updateSuccess) {
       if (db.isServerless()) {

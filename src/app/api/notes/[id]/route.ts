@@ -65,9 +65,11 @@ export async function PUT(
       publishedAt: body.publishedAt,
       updatedAt: new Date().toISOString(),
     };
-    
-    notes[noteIndex] = updatedNote;
+      notes[noteIndex] = updatedNote;
     const updateSuccess = await db.updateData({ notes });
+    
+    // Always clear cache after update
+    db.clearCache();
     
     if (!updateSuccess && db.isServerless()) {
       return NextResponse.json({ 
@@ -103,6 +105,9 @@ export async function DELETE(
       return NextResponse.json({ error: 'Note not found' }, { status: 404 });
     }    notes.splice(noteIndex, 1);
     const updateSuccess = await db.updateData({ notes });
+    
+    // Always clear cache after update
+    db.clearCache();
     
     if (!updateSuccess) {
       if (db.isServerless()) {

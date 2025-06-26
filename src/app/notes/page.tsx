@@ -23,20 +23,51 @@ interface PortfolioData {
   };
 }
 
-export default function Notes() {  const [notes, setNotes] = useState<Note[]>([]);
+export default function Notes() {
+  const [notes, setNotes] = useState<Note[]>([]);
   const [portfolioData, setPortfolioData] = useState<PortfolioData | null>(null);
   const [selectedNote, setSelectedNote] = useState<Note | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [loading, setLoading] = useState(true);
-
   useEffect(() => {
     fetchData();
+    
+    // Set up frequent refresh every 5 seconds for immediate updates
+    const interval = setInterval(fetchData, 5000);
+    
+    // Listen for visibility change to refresh when user returns to tab
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        fetchData();
+      }
+    };
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, []);
+
   const fetchData = async () => {
-    try {
-      const response = await fetch('/api/data');
+    try {      // Add multiple cache-busting parameters
+      const timestamp = Date.now();
+      const random = Math.random().toString(36).substring(7);
+      const response = await fetch(`/api/data?t=${timestamp}&r=${random}&v=${Date.now()}`, {
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0',
+        },
+      });
       if (response.ok) {
         const data = await response.json();
+        console.log('Notes page data refreshed:', {
+          timestamp: new Date().toISOString(),
+          notesCount: data.notes?.length || 0
+        });
         setNotes(data.notes || []);
         setPortfolioData(data);
         // Auto-select first note if available

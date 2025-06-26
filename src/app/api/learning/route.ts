@@ -46,10 +46,13 @@ export async function POST(request: NextRequest) {
       type: body.type,
       date: body.date,
       createdAt: new Date().toISOString(),
-    };
-      const updatedLearning = Array.isArray(data.learning) ? [...data.learning] : [];
+    };    const updatedLearning = Array.isArray(data.learning) ? [...data.learning] : [];
     updatedLearning.unshift(newLearning); // Add to beginning
-      const updateSuccess = await db.updateData({ learning: updatedLearning });
+    
+    const updateSuccess = await db.updateData({ learning: updatedLearning });
+    
+    // Always clear cache after update
+    db.clearCache();
     
     if (!updateSuccess) {
       if (db.isServerless()) {
@@ -93,6 +96,9 @@ export async function PUT(request: NextRequest) {
       type: body.type,
       date: body.date,
     };    const updateSuccess = await db.updateData({ learning });
+    
+    // Always clear cache after update
+    db.clearCache();
     
     if (!updateSuccess) {
       if (db.isServerless()) {

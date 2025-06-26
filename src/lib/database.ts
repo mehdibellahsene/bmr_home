@@ -123,6 +123,9 @@ export class PortfolioDatabase {
     }
     return PortfolioDatabase.instance;
   }  async getData(): Promise<PortfolioData> {
+    // ALWAYS read fresh data - no caching at all for immediate updates
+    this.data = null;
+    
     // In serverless environments (like Vercel), prioritize static data
     if (this.isServerless()) {
       const cleanData = {
@@ -131,11 +134,10 @@ export class PortfolioDatabase {
         notes: Array.isArray(STATIC_PORTFOLIO_DATA.notes) ? STATIC_PORTFOLIO_DATA.notes : [],
         learning: Array.isArray(STATIC_PORTFOLIO_DATA.learning) ? STATIC_PORTFOLIO_DATA.learning : [],
       };
-      this.data = cleanData;
       return cleanData;
     }
 
-    // For development/local environments, try to read from file system first
+    // For development/local environments, always read fresh from file system
     if (typeof window === 'undefined') {
       try {
         const fs = await import('fs');
@@ -144,6 +146,7 @@ export class PortfolioDatabase {
         
         // Check if file exists
         if (!fs.existsSync(dataPath)) {
+          console.log('Portfolio file not found, using static data');
           // Use static data as fallback
           const cleanData = {
             profile: STATIC_PORTFOLIO_DATA.profile || defaultData.profile,
@@ -151,10 +154,10 @@ export class PortfolioDatabase {
             notes: Array.isArray(STATIC_PORTFOLIO_DATA.notes) ? STATIC_PORTFOLIO_DATA.notes : [],
             learning: Array.isArray(STATIC_PORTFOLIO_DATA.learning) ? STATIC_PORTFOLIO_DATA.learning : [],
           };
-          this.data = cleanData;
           return cleanData;
         }
         
+        // Always read fresh from file - no caching
         const fileContents = fs.readFileSync(dataPath, 'utf8');
         const parsedData = JSON.parse(fileContents) as PortfolioData;
         
@@ -166,8 +169,16 @@ export class PortfolioDatabase {
           learning: Array.isArray(parsedData.learning) ? parsedData.learning : [],
         };
         
-        this.data = cleanData;        return cleanData;
-      } catch {
+        console.log('Fresh data loaded from file:', {
+          notesCount: cleanData.notes.length,
+          learningCount: cleanData.learning.length,
+          profileName: cleanData.profile.name,
+          timestamp: new Date().toISOString()
+        });
+        
+        return cleanData;
+      } catch (error) {
+        console.error('Error reading portfolio file:', error);
         // Use static data as fallback
         const cleanData = {
           profile: STATIC_PORTFOLIO_DATA.profile || defaultData.profile,
@@ -175,25 +186,23 @@ export class PortfolioDatabase {
           notes: Array.isArray(STATIC_PORTFOLIO_DATA.notes) ? STATIC_PORTFOLIO_DATA.notes : [],
           learning: Array.isArray(STATIC_PORTFOLIO_DATA.learning) ? STATIC_PORTFOLIO_DATA.learning : [],
         };
-        this.data = cleanData;
         return cleanData;
       }
     }
 
-    // If no cached data and file read failed, return empty structure
-    if (!this.data) {
-      this.data = { ...defaultData };
-    }
-    
-    return this.data;
+    // Client-side fallback - return empty structure
+    return { ...defaultData };
   }  async updateData(newData: Partial<PortfolioData>): Promise<boolean> {
     const currentData = await this.getData();
     
-    // Merge the data
-    this.data = {
+    // Merge the data but don't cache it
+    const mergedData = {
       ...currentData,
       ...newData
     };
+
+    // Always clear cache to force fresh reads
+    this.data = null;
 
     // Try to persist to file system (works locally)
     if (typeof window === 'undefined') {
@@ -208,9 +217,18 @@ export class PortfolioDatabase {
           fs.mkdirSync(dataDir, { recursive: true });
         }
         
-        fs.writeFileSync(dataPath, JSON.stringify(this.data, null, 2));
+        // Write data to file immediately
+        fs.writeFileSync(dataPath, JSON.stringify(mergedData, null, 2));
+        
+        console.log('Data successfully written to file:', {
+          notesCount: mergedData.notes.length,
+          learningCount: mergedData.learning.length,
+          timestamp: new Date().toISOString()
+        });
+        
         return true;
-      } catch {
+      } catch (error) {
+        console.error('Failed to write data to file:', error);
         // In serverless environments or when filesystem is unavailable
         return false;
       }

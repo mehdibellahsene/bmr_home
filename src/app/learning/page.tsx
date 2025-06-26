@@ -22,18 +22,49 @@ interface PortfolioData {
   };
 }
 
-export default function Learning() {  const [learning, setLearning] = useState<Learning[]>([]);
+export default function Learning() {
+  const [learning, setLearning] = useState<Learning[]>([]);
   const [portfolioData, setPortfolioData] = useState<PortfolioData | null>(null);
   const [loading, setLoading] = useState(true);
-
   useEffect(() => {
     fetchData();
+    
+    // Set up frequent refresh every 5 seconds for immediate updates
+    const interval = setInterval(fetchData, 5000);
+    
+    // Listen for visibility change to refresh when user returns to tab
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        fetchData();
+      }
+    };
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, []);
   const fetchData = async () => {
     try {
-      const response = await fetch('/api/data');
+      // Add multiple cache-busting parameters
+      const timestamp = Date.now();
+      const random = Math.random().toString(36).substring(7);
+      const response = await fetch(`/api/data?t=${timestamp}&r=${random}&v=${Date.now()}`, {
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0',
+        },
+      });
       if (response.ok) {
         const data = await response.json();
+        console.log('Learning page data refreshed:', {
+          timestamp: new Date().toISOString(),
+          learningCount: data.learning?.length || 0
+        });
         setLearning(data.learning || []);
         setPortfolioData(data);
       }

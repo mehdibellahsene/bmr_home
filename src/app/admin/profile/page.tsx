@@ -62,9 +62,7 @@ export default function AdminProfile() {
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleProfileSubmit = async (e: React.FormEvent) => {
+  };  const handleProfileSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
     setMessage('');
@@ -77,7 +75,26 @@ export default function AdminProfile() {
       });
 
       if (response.ok) {
-        setMessage('Profile updated successfully!');
+        setMessage('Profile updated successfully! Changes are now live on your public site.');
+        
+        // Immediately trigger multiple cache-busting requests to ensure all data is fresh
+        const promises = [];
+        for (let i = 0; i < 3; i++) {
+          const timestamp = Date.now() + i;
+          promises.push(
+            fetch(`/api/data?t=${timestamp}&refresh=true`, {
+              cache: 'no-store',
+              headers: { 
+                'Cache-Control': 'no-cache',
+                'Pragma': 'no-cache'
+              }
+            }).catch(() => {}) // Ignore errors for cache refresh
+          );
+        }
+        
+        // Don't wait for cache refresh to complete
+        Promise.all(promises).catch(() => {});
+        
       } else {
         throw new Error('Failed to update profile');
       }
@@ -87,9 +104,7 @@ export default function AdminProfile() {
     } finally {
       setSaving(false);
     }
-  };
-
-  const handleLinksSubmit = async (e: React.FormEvent) => {
+  };  const handleLinksSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
     setMessage('');
@@ -102,7 +117,26 @@ export default function AdminProfile() {
       });
 
       if (response.ok) {
-        setMessage('Links updated successfully!');
+        setMessage('Links updated successfully! Changes are now live on your public site.');
+        
+        // Immediately trigger multiple cache-busting requests to ensure all data is fresh
+        const promises = [];
+        for (let i = 0; i < 3; i++) {
+          const timestamp = Date.now() + i;
+          promises.push(
+            fetch(`/api/data?t=${timestamp}&refresh=true`, {
+              cache: 'no-store',
+              headers: { 
+                'Cache-Control': 'no-cache',
+                'Pragma': 'no-cache'
+              }
+            }).catch(() => {}) // Ignore errors for cache refresh
+          );
+        }
+        
+        // Don't wait for cache refresh to complete
+        Promise.all(promises).catch(() => {});
+        
       } else {
         throw new Error('Failed to update links');
       }

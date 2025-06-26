@@ -67,6 +67,9 @@ export async function PUT(
     };    learning[learningIndex] = updatedLearning;
     const updateSuccess = await db.updateData({ learning });
     
+    // Always clear cache after update
+    db.clearCache();
+    
     if (!updateSuccess) {
       if (db.isServerless()) {
         return NextResponse.json({ 
@@ -105,6 +108,9 @@ export async function DELETE(
       return NextResponse.json({ error: 'Learning item not found' }, { status: 404 });
     }    learning.splice(learningIndex, 1);
     const updateSuccess = await db.updateData({ learning });
+    
+    // Always clear cache after update
+    db.clearCache();
     
     if (!updateSuccess) {
       if (db.isServerless()) {
