@@ -1,14 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { PortfolioDatabase } from '@/lib/database';
-
-interface Learning {
-  id: string;
-  title: string;
-  description: string;
-  type: string;
-  date: string;
-  createdAt: string;
-}
+import { mongoDb } from '@/lib/database-mongo';
 
 function checkAuth(request: NextRequest) {
   const authCookie = request.cookies.get('admin-auth');
@@ -21,19 +12,19 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    const db = PortfolioDatabase.getInstance();
-    const data = await db.getData();
-    const learning = Array.isArray(data.learning) ? data.learning as Learning[] : [];
-    const learningItem = learning.find((l: Learning) => l.id === id);
+    const learning = await mongoDb.getLearningItem(id);
     
-    if (!learningItem) {
+    if (!learning) {
       return NextResponse.json({ error: 'Learning item not found' }, { status: 404 });
     }
     
-    return NextResponse.json(learningItem);
+    return NextResponse.json(learning);
   } catch (error) {
     console.error('Failed to read learning item:', error);
-    return NextResponse.json({ error: 'Failed to read learning item' }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Failed to read learning item. Please check your database connection.' }, 
+      { status: 500 }
+    );
   }
 }
 
@@ -48,43 +39,33 @@ export async function PUT(
   try {
     const { id } = await params;
     const body = await request.json();
-    const db = PortfolioDatabase.getInstance();
-    const data = await db.getData();
     
-    const learning = Array.isArray(data.learning) ? [...data.learning] as Learning[] : [];
-    const learningIndex = learning.findIndex((l: Learning) => l.id === id);
-    
-    if (learningIndex === -1) {
-      return NextResponse.json({ error: 'Learning item not found' }, { status: 404 });
+    // Validate required fields
+    if (!body.title || !body.description || !body.type || !body.date) {
+      return NextResponse.json(
+        { error: 'Title, description, type, and date are required' }, 
+        { status: 400 }
+      );
     }
-    
-    const updatedLearning: Learning = {
-      ...learning[learningIndex],
+
+    const updatedLearning = await mongoDb.updateLearning(id, {
       title: body.title,
       description: body.description,
       type: body.type,
       date: body.date,
-    };    learning[learningIndex] = updatedLearning;
-    const updateSuccess = await db.updateData({ learning });
-    
-    // Always clear cache after update
-    db.clearCache();
-    
-    if (!updateSuccess) {
-      if (db.isServerless()) {
-        return NextResponse.json({ 
-          ...updatedLearning,
-          warning: 'Learning updated but not persisted in serverless environment'
-        });
-      } else {
-        return NextResponse.json({ error: 'Failed to persist learning update' }, { status: 500 });
-      }
+    });
+
+    if (!updatedLearning) {
+      return NextResponse.json({ error: 'Learning item not found' }, { status: 404 });
     }
-    
+
     return NextResponse.json(updatedLearning);
   } catch (error) {
     console.error('Failed to update learning item:', error);
-    return NextResponse.json({ error: 'Failed to update learning item' }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Failed to update learning item. Please check your database connection.' }, 
+      { status: 500 }
+    );
   }
 }
 
@@ -98,34 +79,18 @@ export async function DELETE(
 
   try {
     const { id } = await params;
-    const db = PortfolioDatabase.getInstance();
-    const data = await db.getData();
+    const deleted = await mongoDb.deleteLearning(id);
     
-    const learning = Array.isArray(data.learning) ? [...data.learning] as Learning[] : [];
-    const learningIndex = learning.findIndex((l: Learning) => l.id === id);
-    
-    if (learningIndex === -1) {
+    if (!deleted) {
       return NextResponse.json({ error: 'Learning item not found' }, { status: 404 });
-    }    learning.splice(learningIndex, 1);
-    const updateSuccess = await db.updateData({ learning });
-    
-    // Always clear cache after update
-    db.clearCache();
-    
-    if (!updateSuccess) {
-      if (db.isServerless()) {
-        return NextResponse.json({ 
-          success: true,
-          warning: 'Learning deleted but not persisted in serverless environment'
-        });
-      } else {
-        return NextResponse.json({ error: 'Failed to persist learning deletion' }, { status: 500 });
-      }
     }
-    
+
     return NextResponse.json({ message: 'Learning item deleted successfully' });
   } catch (error) {
     console.error('Failed to delete learning item:', error);
-    return NextResponse.json({ error: 'Failed to delete learning item' }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Failed to delete learning item. Please check your database connection.' }, 
+      { status: 500 }
+    );
   }
 }

@@ -1,14 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { PortfolioDatabase } from '@/lib/database';
-
-interface Note {
-  id: string;
-  title: string;
-  content: string;
-  publishedAt: string;
-  createdAt: string;
-  updatedAt: string;
-}
+import { mongoDb } from '@/lib/database-mongo';
 
 function checkAuth(request: NextRequest) {
   const authCookie = request.cookies.get('admin-auth');
@@ -17,16 +8,17 @@ function checkAuth(request: NextRequest) {
 
 export async function GET() {
   try {
-    const db = PortfolioDatabase.getInstance();
-    const data = await db.getData();
-    const notes = Array.isArray(data.notes) ? data.notes : [];
+    const notes = await mongoDb.getNotes();
     
     const response = NextResponse.json(notes);
     response.headers.set('Cache-Control', 'public, max-age=30, stale-while-revalidate=120');
     return response;
   } catch (error) {
     console.error('Failed to read notes:', error);
-    return NextResponse.json({ error: 'Failed to read notes' }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Failed to read notes. Please check your database connection.' }, 
+      { status: 500 }
+    );
   }
 }
 
@@ -37,42 +29,30 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const db = PortfolioDatabase.getInstance();
-    const data = await db.getData();
     
-    const newNote = {
-      id: Date.now().toString(),
+    // Validate required fields
+    if (!body.title || !body.content) {
+      return NextResponse.json(
+        { error: 'Title and content are required' }, 
+        { status: 400 }
+      );
+    }
+
+    const newNote = await mongoDb.createNote({
       title: body.title,
       content: body.content,
       publishedAt: body.publishedAt || new Date().toISOString().split('T')[0],
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
-      const updatedNotes = Array.isArray(data.notes) ? [...data.notes] : [];
-    updatedNotes.unshift(newNote); // Add to beginning
-      const updateSuccess = await db.updateData({ notes: updatedNotes });
-    
-    // Always clear cache after update
-    db.clearCache();
-    
-    if (!updateSuccess) {
-      if (db.isServerless()) {
-        return NextResponse.json({ 
-          ...newNote,
-          warning: 'Note created but not persisted in serverless environment'
-        });
-      } else {
-        return NextResponse.json({ error: 'Failed to persist note' }, { status: 500 });
-      }
-    }
-    
-    return NextResponse.json(newNote);
+    });
+
+    return NextResponse.json(newNote, { status: 201 });
   } catch (error) {
     console.error('Failed to create note:', error);
-    return NextResponse.json({ error: 'Failed to create note' }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Failed to create note. Please check your database connection.' }, 
+      { status: 500 }
+    );
   }
 }
-
 export async function PUT(request: NextRequest) {
   if (!checkAuth(request)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -80,40 +60,31 @@ export async function PUT(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const db = PortfolioDatabase.getInstance();
-    const data = await db.getData();
-      const notes = Array.isArray(data.notes) ? [...data.notes] as Note[] : [];
-    const noteIndex = notes.findIndex((note) => note.id === body.id);
     
-    if (noteIndex === -1) {
-      return NextResponse.json({ error: 'Note not found' }, { status: 404 });
+    // Validate required fields
+    if (!body.id || !body.title || !body.content) {
+      return NextResponse.json(
+        { error: 'ID, title, and content are required' }, 
+        { status: 400 }
+      );
     }
-    
-    notes[noteIndex] = {
-      ...notes[noteIndex],
+
+    const updatedNote = await mongoDb.updateNote(body.id, {
       title: body.title,
       content: body.content,
       publishedAt: body.publishedAt,
-      updatedAt: new Date().toISOString(),
-    };    const updateSuccess = await db.updateData({ notes });
-    
-    // Always clear cache after update
-    db.clearCache();
-    
-    if (!updateSuccess) {
-      if (db.isServerless()) {
-        return NextResponse.json({ 
-          ...notes[noteIndex],
-          warning: 'Note updated but not persisted in serverless environment'
-        });
-      } else {
-        return NextResponse.json({ error: 'Failed to persist note update' }, { status: 500 });
-      }
+    });
+
+    if (!updatedNote) {
+      return NextResponse.json({ error: 'Note not found' }, { status: 404 });
     }
-    
-    return NextResponse.json(notes[noteIndex]);
+
+    return NextResponse.json(updatedNote);
   } catch (error) {
     console.error('Failed to update note:', error);
-    return NextResponse.json({ error: 'Failed to update note' }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Failed to update note. Please check your database connection.' }, 
+      { status: 500 }
+    );
   }
 }

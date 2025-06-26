@@ -1,14 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { PortfolioDatabase } from '@/lib/database';
-
-interface Note {
-  id: string;
-  title: string;
-  content: string;
-  publishedAt: string;
-  createdAt: string;
-  updatedAt: string;
-}
+import { mongoDb } from '@/lib/database-mongo';
 
 function checkAuth(request: NextRequest) {
   const authCookie = request.cookies.get('admin-auth');
@@ -21,10 +12,7 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    const db = PortfolioDatabase.getInstance();
-    const data = await db.getData();
-    const notes = Array.isArray(data.notes) ? data.notes as Note[] : [];
-    const note = notes.find((n: Note) => n.id === id);
+    const note = await mongoDb.getNote(id);
     
     if (!note) {
       return NextResponse.json({ error: 'Note not found' }, { status: 404 });
@@ -33,7 +21,10 @@ export async function GET(
     return NextResponse.json(note);
   } catch (error) {
     console.error('Failed to read note:', error);
-    return NextResponse.json({ error: 'Failed to read note' }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Failed to read note. Please check your database connection.' }, 
+      { status: 500 }
+    );
   }
 }
 
@@ -48,40 +39,32 @@ export async function PUT(
   try {
     const { id } = await params;
     const body = await request.json();
-    const db = PortfolioDatabase.getInstance();
-    const data = await db.getData();
     
-    const notes = Array.isArray(data.notes) ? [...data.notes] as Note[] : [];
-    const noteIndex = notes.findIndex((n: Note) => n.id === id);
-    
-    if (noteIndex === -1) {
-      return NextResponse.json({ error: 'Note not found' }, { status: 404 });
+    // Validate required fields
+    if (!body.title || !body.content) {
+      return NextResponse.json(
+        { error: 'Title and content are required' }, 
+        { status: 400 }
+      );
     }
-    
-    const updatedNote: Note = {
-      ...notes[noteIndex],
+
+    const updatedNote = await mongoDb.updateNote(id, {
       title: body.title,
       content: body.content,
       publishedAt: body.publishedAt,
-      updatedAt: new Date().toISOString(),
-    };
-      notes[noteIndex] = updatedNote;
-    const updateSuccess = await db.updateData({ notes });
-    
-    // Always clear cache after update
-    db.clearCache();
-    
-    if (!updateSuccess && db.isServerless()) {
-      return NextResponse.json({ 
-        ...updatedNote,
-        warning: 'Note updated but not persisted in serverless environment'
-      });
+    });
+
+    if (!updatedNote) {
+      return NextResponse.json({ error: 'Note not found' }, { status: 404 });
     }
-    
+
     return NextResponse.json(updatedNote);
   } catch (error) {
     console.error('Failed to update note:', error);
-    return NextResponse.json({ error: 'Failed to update note' }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Failed to update note. Please check your database connection.' }, 
+      { status: 500 }
+    );
   }
 }
 
@@ -95,34 +78,18 @@ export async function DELETE(
 
   try {
     const { id } = await params;
-    const db = PortfolioDatabase.getInstance();
-    const data = await db.getData();
+    const deleted = await mongoDb.deleteNote(id);
     
-    const notes = Array.isArray(data.notes) ? [...data.notes] as Note[] : [];
-    const noteIndex = notes.findIndex((n: Note) => n.id === id);
-    
-    if (noteIndex === -1) {
+    if (!deleted) {
       return NextResponse.json({ error: 'Note not found' }, { status: 404 });
-    }    notes.splice(noteIndex, 1);
-    const updateSuccess = await db.updateData({ notes });
-    
-    // Always clear cache after update
-    db.clearCache();
-    
-    if (!updateSuccess) {
-      if (db.isServerless()) {
-        return NextResponse.json({ 
-          success: true,
-          warning: 'Note deleted but not persisted in serverless environment'
-        });
-      } else {
-        return NextResponse.json({ error: 'Failed to persist note deletion' }, { status: 500 });
-      }
     }
-    
+
     return NextResponse.json({ message: 'Note deleted successfully' });
   } catch (error) {
     console.error('Failed to delete note:', error);
-    return NextResponse.json({ error: 'Failed to delete note' }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Failed to delete note. Please check your database connection.' }, 
+      { status: 500 }
+    );
   }
 }

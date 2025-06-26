@@ -1,4 +1,4 @@
-import { PortfolioDatabase } from '@/lib/database';
+import { mongoDb } from '@/lib/database-mongo';
 
 interface PortfolioData {
   profile: {
@@ -34,11 +34,10 @@ interface PortfolioData {
 
 async function getPortfolioData(): Promise<PortfolioData | null> {
   try {
-    const db = PortfolioDatabase.getInstance();
-    const data = await db.getData();
+    const data = await mongoDb.getPortfolioData();
     return data as PortfolioData;
   } catch (error) {
-    console.error('Error fetching portfolio data on server:', error);
+    console.error('Error fetching portfolio data from MongoDB:', error);
     return null;
   }
 }

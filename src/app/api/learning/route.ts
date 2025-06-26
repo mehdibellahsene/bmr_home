@@ -1,14 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { PortfolioDatabase } from '@/lib/database';
-
-interface Learning {
-  id: string;
-  title: string;
-  description: string;
-  type: string;
-  date: string;
-  createdAt: string;
-}
+import { mongoDb } from '@/lib/database-mongo';
 
 function checkAuth(request: NextRequest) {
   const authCookie = request.cookies.get('admin-auth');
@@ -17,16 +8,17 @@ function checkAuth(request: NextRequest) {
 
 export async function GET() {
   try {
-    const db = PortfolioDatabase.getInstance();
-    const data = await db.getData();
-    const learning = Array.isArray(data.learning) ? data.learning : [];
+    const learning = await mongoDb.getLearning();
     
     const response = NextResponse.json(learning);
     response.headers.set('Cache-Control', 'public, max-age=30, stale-while-revalidate=120');
     return response;
   } catch (error) {
     console.error('Failed to read learning:', error);
-    return NextResponse.json({ error: 'Failed to read learning' }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Failed to read learning. Please check your database connection.' }, 
+      { status: 500 }
+    );
   }
 }
 
@@ -37,39 +29,29 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const db = PortfolioDatabase.getInstance();
-    const data = await db.getData();
     
-    const newLearning = {
-      id: Date.now().toString(),
+    // Validate required fields
+    if (!body.title || !body.description || !body.type || !body.date) {
+      return NextResponse.json(
+        { error: 'Title, description, type, and date are required' }, 
+        { status: 400 }
+      );
+    }
+
+    const newLearning = await mongoDb.createLearning({
       title: body.title,
       description: body.description,
       type: body.type,
       date: body.date,
-      createdAt: new Date().toISOString(),
-    };    const updatedLearning = Array.isArray(data.learning) ? [...data.learning] : [];
-    updatedLearning.unshift(newLearning); // Add to beginning
-    
-    const updateSuccess = await db.updateData({ learning: updatedLearning });
-    
-    // Always clear cache after update
-    db.clearCache();
-    
-    if (!updateSuccess) {
-      if (db.isServerless()) {
-        return NextResponse.json({ 
-          ...newLearning,
-          warning: 'Learning created but not persisted in serverless environment'
-        });
-      } else {
-        return NextResponse.json({ error: 'Failed to persist learning' }, { status: 500 });
-      }
-    }
-    
-    return NextResponse.json(newLearning);
+    });
+
+    return NextResponse.json(newLearning, { status: 201 });
   } catch (error) {
     console.error('Failed to create learning:', error);
-    return NextResponse.json({ error: 'Failed to create learning' }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Failed to create learning. Please check your database connection.' }, 
+      { status: 500 }
+    );
   }
 }
 
@@ -80,41 +62,33 @@ export async function PUT(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const db = PortfolioDatabase.getInstance();
-    const data = await db.getData();
     
-    const learning = Array.isArray(data.learning) ? [...data.learning] as Learning[] : [];
-    const learningIndex = learning.findIndex((item) => item.id === body.id);
-    
-    if (learningIndex === -1) {
-      return NextResponse.json({ error: 'Learning item not found' }, { status: 404 });
+    // Validate required fields
+    if (!body.id || !body.title || !body.description || !body.type || !body.date) {
+      return NextResponse.json(
+        { error: 'ID, title, description, type, and date are required' }, 
+        { status: 400 }
+      );
     }
-    
-    learning[learningIndex] = {
-      ...learning[learningIndex],
+
+    const updatedLearning = await mongoDb.updateLearning(body.id, {
       title: body.title,
       description: body.description,
       type: body.type,
       date: body.date,
-    };    const updateSuccess = await db.updateData({ learning });
-    
-    // Always clear cache after update
-    db.clearCache();
-    
-    if (!updateSuccess) {
-      if (db.isServerless()) {
-        return NextResponse.json({ 
-          ...learning[learningIndex],
-          warning: 'Learning updated but not persisted in serverless environment'
-        });
-      } else {
-        return NextResponse.json({ error: 'Failed to persist learning update' }, { status: 500 });
-      }
+    });
+
+    if (!updatedLearning) {
+      return NextResponse.json({ error: 'Learning item not found' }, { status: 404 });
     }
-    
-    return NextResponse.json(learning[learningIndex]);
+
+    return NextResponse.json(updatedLearning);
   } catch (error) {
     console.error('Failed to update learning:', error);
-    return NextResponse.json({ error: 'Failed to update learning' }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Failed to update learning. Please check your database connection.' }, 
+      { status: 500 }
+    );
   }
 }
+
