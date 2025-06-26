@@ -23,12 +23,12 @@ interface PortfolioData {
 export default function Home() {
   const [data, setData] = useState<PortfolioData | null>(null);
   const [loading, setLoading] = useState(true);
-
+  const [error, setError] = useState<string | null>(null);
   useEffect(() => {
     fetchData();
     
-    // Set up periodic refresh every 30 seconds
-    const interval = setInterval(fetchData, 30000);
+    // Set up periodic refresh every 5 minutes (reduced frequency)
+    const interval = setInterval(fetchData, 300000);
     
     // Listen for visibility change to refresh when user returns to tab
     const handleVisibilityChange = () => {
@@ -44,32 +44,73 @@ export default function Home() {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, []);
-
   const fetchData = async () => {
     try {
-      // Add timestamp and cache-busting headers
-      const timestamp = Date.now();
-      const response = await fetch(`/api/data?t=${timestamp}`, {
+      setError(null); // Clear any previous errors
+      
+      // Create an AbortController for timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+      
+      const response = await fetch('/api/data', {
         cache: 'no-store',
+        signal: controller.signal,
         headers: {
           'Cache-Control': 'no-cache',
           'Pragma': 'no-cache',
         },
       });
+      
+      clearTimeout(timeoutId);
+      
       if (response.ok) {
         const portfolioData = await response.json();
         setData(portfolioData);
+      } else {
+        const errorMsg = `API error: ${response.status} ${response.statusText}`;
+        console.error(errorMsg);
+        setError(errorMsg);
       }
     } catch (error) {
+      let errorMsg = 'Unknown error occurred';
+      if (error instanceof Error && error.name === 'AbortError') {
+        errorMsg = 'Request timed out - please check your connection';
+      } else if (error instanceof Error) {
+        errorMsg = `Network error: ${error.message}`;
+      }
       console.error('Error fetching portfolio data:', error);
+      setError(errorMsg);
     } finally {
       setLoading(false);
     }
-  };
-  if (loading) {
+  };  if (loading) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
-        <div className="text-white">Loading...</div>
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white mx-auto mb-4"></div>
+          <div className="text-white">Loading portfolio...</div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <div className="text-center max-w-md mx-auto p-6">
+          <div className="text-red-400 mb-4">⚠️ Error loading portfolio</div>
+          <div className="text-gray-300 mb-4">{error}</div>
+          <button 
+            onClick={() => {
+              setLoading(true);
+              setError(null);
+              fetchData();
+            }}
+            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded transition-colors"
+          >
+            Retry
+          </button>
+        </div>
       </div>
     );
   }

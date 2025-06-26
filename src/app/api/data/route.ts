@@ -8,14 +8,17 @@ function isAuthenticated(request: NextRequest): boolean {
 }
 
 export async function GET(request: NextRequest) {
+  const startTime = Date.now();
+  console.log('[API] /api/data - Request started');
+  
   try {
     // Check if this is a validation request
     const url = new URL(request.url);
     const isValidation = url.searchParams.has('validate');
     
     const db = PortfolioDatabase.getInstance();
-    
-    if (isValidation) {
+      if (isValidation) {
+      console.log('[API] Validation request - clearing cache');
       // Clear cache to ensure fresh data for validation
       db.clearCache();
       
@@ -37,27 +40,25 @@ export async function GET(request: NextRequest) {
         }
       };
       
-      return NextResponse.json(validation);
-    }
+      return NextResponse.json(validation);    }
     
-    // For regular requests, always clear cache to ensure fresh data
-    db.clearCache();
-    
-    // Regular data request
+    // Regular data request - use cached data for better performance
     const data = await db.getData();
     // Remove admin credentials from response
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { admin: _admin, ...publicData } = data as unknown as Record<string, unknown>;
-    
-    // Add cache-busting headers
+      // Add cache-busting headers
     const response = NextResponse.json(publicData);
     response.headers.set('Cache-Control', 'no-cache, no-store, must-revalidate');
     response.headers.set('Pragma', 'no-cache');
     response.headers.set('Expires', '0');
     
-    return response;
-  } catch (error) {
-    console.error('Failed to read data:', error);
+    const duration = Date.now() - startTime;
+    console.log(`[API] /api/data - Request completed in ${duration}ms`);
+    
+    return response;  } catch (error) {
+    const duration = Date.now() - startTime;
+    console.error(`[API] /api/data - Failed after ${duration}ms:`, error);
     return NextResponse.json({ error: 'Failed to read data' }, { status: 500 });
   }
 }

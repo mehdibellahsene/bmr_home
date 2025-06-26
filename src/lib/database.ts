@@ -122,82 +122,91 @@ export class PortfolioDatabase {
       PortfolioDatabase.instance = new PortfolioDatabase();
     }
     return PortfolioDatabase.instance;
-  }
-
-  private async getDataFromMongoDB(): Promise<PortfolioData> {
+  }  private async getDataFromMongoDB(): Promise<PortfolioData> {
     try {
-      await connectToMongoDB();
+      // Add a timeout wrapper for the entire operation
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error('Database operation timed out')), 8000);
+      });
 
-      // Get profile data
-      const profileDoc = await Profile.findOne().sort({ createdAt: -1 });
-      const profile = profileDoc ? {
-        name: profileDoc.name,
-        title: profileDoc.title,
-        location: profileDoc.location,
-        email: profileDoc.email,
-        skills: profileDoc.skills,
-        interests: profileDoc.interests,
-        homeImage: profileDoc.homeImage || ""
-      } : STATIC_PORTFOLIO_DATA.profile;
-
-      // Get links data
-      const linkDocs = await Link.find();
-      const workLinks = linkDocs
-        .filter(link => link.category === 'work')
-        .map(link => ({
-          id: link.linkId,
-          name: link.name,
-          url: link.url,
-          icon: link.icon
-        }));
+      const dataPromise = this.fetchMongoData();
       
-      const presenceLinks = linkDocs
-        .filter(link => link.category === 'presence')
-        .map(link => ({
-          id: link.linkId,
-          name: link.name,
-          url: link.url,
-          icon: link.icon
-        }));
-
-      const links = {
-        work: workLinks.length > 0 ? workLinks : STATIC_PORTFOLIO_DATA.links.work,
-        presence: presenceLinks.length > 0 ? presenceLinks : STATIC_PORTFOLIO_DATA.links.presence
-      };
-
-      // Get notes data
-      const noteDocs = await Note.find().sort({ createdAt: -1 });
-      const notes = noteDocs.length > 0 ? noteDocs.map(note => ({
-        id: note.noteId,
-        title: note.title,
-        content: note.content,
-        publishedAt: note.publishedAt,
-        createdAt: note.createdAt.toISOString(),
-        updatedAt: note.updatedAt.toISOString()
-      })) : STATIC_PORTFOLIO_DATA.notes;
-
-      // Get learning data
-      const learningDocs = await Learning.find().sort({ createdAt: -1 });
-      const learning = learningDocs.length > 0 ? learningDocs.map(learn => ({
-        id: learn.learningId,
-        title: learn.title,
-        description: learn.description,
-        type: learn.type,
-        date: learn.date,
-        createdAt: learn.createdAt.toISOString()
-      })) : STATIC_PORTFOLIO_DATA.learning;
-
-      return {
-        profile,
-        links,
-        notes,
-        learning
-      };
+      return await Promise.race([dataPromise, timeoutPromise]);
     } catch (error) {
       console.error('Error fetching data from MongoDB:', error);
       // Fallback to static data
       return STATIC_PORTFOLIO_DATA as PortfolioData;
     }
+  }
+
+  private async fetchMongoData(): Promise<PortfolioData> {
+    await connectToMongoDB();
+
+    // Get profile data
+    const profileDoc = await Profile.findOne().sort({ createdAt: -1 });
+    const profile = profileDoc ? {
+      name: profileDoc.name,
+      title: profileDoc.title,
+      location: profileDoc.location,
+      email: profileDoc.email,
+      skills: profileDoc.skills,
+      interests: profileDoc.interests,
+      homeImage: profileDoc.homeImage || ""
+    } : STATIC_PORTFOLIO_DATA.profile;
+
+    // Get links data
+    const linkDocs = await Link.find();
+    const workLinks = linkDocs
+      .filter(link => link.category === 'work')
+      .map(link => ({
+        id: link.linkId,
+        name: link.name,
+        url: link.url,
+        icon: link.icon
+      }));
+    
+    const presenceLinks = linkDocs
+      .filter(link => link.category === 'presence')
+      .map(link => ({
+        id: link.linkId,
+        name: link.name,
+        url: link.url,
+        icon: link.icon
+      }));
+
+    const links = {
+      work: workLinks.length > 0 ? workLinks : STATIC_PORTFOLIO_DATA.links.work,
+      presence: presenceLinks.length > 0 ? presenceLinks : STATIC_PORTFOLIO_DATA.links.presence
+    };
+
+    // Get notes data
+    const noteDocs = await Note.find().sort({ createdAt: -1 });
+    const notes = noteDocs.length > 0 ? noteDocs.map(note => ({
+      id: note.noteId,
+      title: note.title,
+      content: note.content,
+      publishedAt: note.publishedAt,
+      createdAt: note.createdAt.toISOString(),
+      updatedAt: note.updatedAt.toISOString()
+    })) : STATIC_PORTFOLIO_DATA.notes;
+
+    // Get learning data
+    const learningDocs = await Learning.find().sort({ createdAt: -1 });
+    const learning = learningDocs.length > 0 ? learningDocs.map(learn => ({
+      id: learn.learningId,
+      title: learn.title,
+      description: learn.description,
+      type: learn.type,
+      date: learn.date,
+      createdAt: learn.createdAt.toISOString()
+    })) : STATIC_PORTFOLIO_DATA.learning;
+
+    return {
+      profile,
+      links,
+      notes,
+      learning
+    };
   }
 
   private async getDataFromFileSystem(): Promise<PortfolioData> {

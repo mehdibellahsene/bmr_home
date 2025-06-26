@@ -24,10 +24,12 @@ class MongoConnection {
     const uri = process.env.MONGODB_URI;
     if (!uri) {
       throw new Error('MONGODB_URI environment variable is not set');
-    }
-
-    try {
-      this.client = new MongoClient(uri);
+    }    try {
+      this.client = new MongoClient(uri, {
+        serverSelectionTimeoutMS: 5000, // 5 second timeout
+        connectTimeoutMS: 5000,
+        socketTimeoutMS: 5000,
+      });
       await this.client.connect();
       this.db = this.client.db('bmr-portfolio');
       console.log('Connected to MongoDB');
@@ -60,9 +62,12 @@ export async function connectToMongoDB(): Promise<void> {
   if (!uri) {
     throw new Error('MONGODB_URI environment variable is not set');
   }
-
   try {
-    await mongoose.connect(uri);
+    await mongoose.connect(uri, {
+      serverSelectionTimeoutMS: 5000,
+      connectTimeoutMS: 5000,
+      socketTimeoutMS: 5000,
+    });
     isConnected = true;
     console.log('Connected to MongoDB with Mongoose');
   } catch (error) {
