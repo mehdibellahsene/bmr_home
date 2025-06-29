@@ -170,10 +170,12 @@ async function withRetryAndFallback<T>(
   jsonFallback: () => T,
   retries = 2
 ): Promise<T> {
+  console.log('[DB] Attempting MongoDB operation...');
+  
   const mongoAvailable = await isMongoDBAvailable();
   
   if (!mongoAvailable) {
-    console.log('MongoDB not available, using JSON fallback');
+    console.log('[DB] MongoDB not available, using JSON fallback');
     return jsonFallback();
   }
   
@@ -181,18 +183,30 @@ async function withRetryAndFallback<T>(
   
   for (let i = 0; i <= retries; i++) {
     try {
+      console.log(`[DB] MongoDB attempt ${i + 1}/${retries + 1}`);
       await ensureConnection();
-      return await mongoOperation();
+      const result = await mongoOperation();
+      console.log('[DB] MongoDB operation successful');
+      return result;
     } catch (error: unknown) {
       lastError = error;
+      console.error(`[DB] MongoDB attempt ${i + 1} failed:`, error instanceof Error ? error.message : error);
       if (i < retries) {
-        await new Promise(resolve => setTimeout(resolve, 1000 * (i + 1)));
+        const delay = 1000 * (i + 1);
+        console.log(`[DB] Retrying in ${delay}ms...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
       }
     }
   }
   
-  console.warn('MongoDB operation failed after retries, using JSON fallback:', lastError);
-  return jsonFallback();
+  console.warn('[DB] MongoDB operation failed after retries, using JSON fallback:', lastError instanceof Error ? lastError.message : lastError);
+  try {
+    return jsonFallback();
+  } catch (fallbackError) {
+    console.error('[DB] JSON fallback also failed:', fallbackError);
+    // Return sensible defaults instead of throwing
+    throw new Error('Both MongoDB and JSON fallback failed');
+  }
 }
 
 /**
@@ -412,18 +426,24 @@ export async function upsertLinks(linksData: { work: LinkData[]; presence: LinkD
 // ==================== NOTE OPERATIONS ====================
 
 export async function getNotes(): Promise<NoteData[]> {
-  return withRetry(async () => {
-    const notes = await Note.find().sort({ createdAt: -1 });
-    
-    return notes.map(note => ({
-      id: note.noteId,
-      title: note.title,
-      content: note.content,
-      publishedAt: note.publishedAt,
-      createdAt: note.createdAt?.toISOString(),
-      updatedAt: note.updatedAt?.toISOString(),
-    }));
-  });
+  return withRetryAndFallback(
+    async () => {
+      const notes = await Note.find().sort({ createdAt: -1 });
+      
+      return notes.map(note => ({
+        id: note.noteId,
+        title: note.title,
+        content: note.content,
+        publishedAt: note.publishedAt,
+        createdAt: note.createdAt?.toISOString(),
+        updatedAt: note.updatedAt?.toISOString(),
+      }));
+    },
+    () => {
+      const data = getPortfolioFromJSON();
+      return data.notes || [];
+    }
+  );
 }
 
 export async function getNote(id: string): Promise<NoteData | null> {
@@ -499,18 +519,24 @@ export async function deleteNote(id: string): Promise<boolean> {
 // ==================== LEARNING OPERATIONS ====================
 
 export async function getLearning(): Promise<LearningData[]> {
-  return withRetry(async () => {
-    const learning = await Learning.find().sort({ createdAt: -1 });
-    
-    return learning.map(item => ({
-      id: item.learningId,
-      title: item.title,
-      description: item.description,
-      type: item.type,
-      date: item.date,
-      createdAt: item.createdAt?.toISOString(),
-    }));
-  });
+  return withRetryAndFallback(
+    async () => {
+      const learning = await Learning.find().sort({ createdAt: -1 });
+      
+      return learning.map(item => ({
+        id: item.learningId,
+        title: item.title,
+        description: item.description,
+        type: item.type,
+        date: item.date,
+        createdAt: item.createdAt?.toISOString(),
+      }));
+    },
+    () => {
+      const data = getPortfolioFromJSON();
+      return data.learning || [];
+    }
+  );
 }
 
 export async function getLearningItem(id: string): Promise<LearningData | null> {

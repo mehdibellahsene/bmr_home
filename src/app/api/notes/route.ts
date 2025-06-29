@@ -12,15 +12,23 @@ function checkAuth(request: NextRequest) {
 
 export async function GET() {
   try {
+    console.log('[API] GET /api/notes - Starting request');
+    console.log('[API] Environment check:', {
+      hasMongoURI: !!process.env.MONGODB_URI,
+      nodeEnv: process.env.NODE_ENV
+    });
+    
     const notes = await getNotes();
+    console.log('[API] GET /api/notes - Success, returning', notes.length, 'notes');
     return NextResponse.json(notes);
   } catch (error: unknown) {
-    console.error('Failed to get notes:', error);
+    console.error('[API] GET /api/notes - Error:', error);
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    return NextResponse.json(
-      { error: 'Failed to get notes', details: errorMessage }, 
-      { status: 500 }
-    );
+    console.error('[API] GET /api/notes - Error details:', errorMessage);
+    
+    // Return empty array as fallback instead of error
+    console.log('[API] GET /api/notes - Returning empty array as fallback');
+    return NextResponse.json([]);
   }
 }
 
