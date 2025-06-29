@@ -1,5 +1,9 @@
+/**
+ * Health Check API - Simplified MongoDB Only
+ */
+
 import { NextRequest, NextResponse } from 'next/server';
-import { mongoDb } from '@/lib/database-mongo';
+import { checkDatabaseHealth, getDatabaseStats } from '@/lib/database-simple';
 
 export async function GET(request: NextRequest) {
   try {
@@ -9,17 +13,17 @@ export async function GET(request: NextRequest) {
     if (detailed) {
       // Detailed health check with stats
       const [health, stats] = await Promise.all([
-        mongoDb.healthCheck(),
-        mongoDb.getStats(),
+        checkDatabaseHealth(),
+        getDatabaseStats(),
       ]);
       
       return NextResponse.json({
-        status: health.status,
-        details: health.details,
+        status: health.connected ? 'healthy' : 'unhealthy',
         database: {
-          connected: health.status === 'healthy',
+          connected: health.connected,
           collections: stats,
           totalDocuments: Object.values(stats).reduce((sum, count) => sum + count, 0),
+          error: health.error
         },
         timestamp: new Date().toISOString(),
         environment: {
@@ -29,10 +33,10 @@ export async function GET(request: NextRequest) {
       });
     } else {
       // Simple health check
-      const health = await mongoDb.healthCheck();
+      const health = await checkDatabaseHealth();
       
       return NextResponse.json({
-        status: health.status,
+        status: health.connected ? 'healthy' : 'unhealthy',
         timestamp: new Date().toISOString(),
       });
     }

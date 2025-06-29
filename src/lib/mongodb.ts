@@ -136,7 +136,7 @@ export async function connectToMongoDB(): Promise<void> {
       maxPoolSize: 10,
       retryWrites: true,
       retryReads: true,
-      bufferCommands: false, // Disable mongoose buffering
+      bufferCommands: true, // Enable mongoose buffering for better reliability
     });
 
     // Set up event listeners

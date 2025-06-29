@@ -9,7 +9,9 @@
     "lint": "next lint",
     "db:test": "node scripts/mongodb-setup.js test",
     "db:migrate": "node scripts/mongodb-setup.js migrate",
-    "db:verify": "node scripts/mongodb-setup.js verify"
+    "db:verify": "node scripts/mongodb-setup.js verify",
+    "migrate:simple": "node scripts/mongodb-migration.js migrate",
+    "migrate:test": "node scripts/mongodb-migration.js test"
   },
   "dependencies": {
     "@tailwindcss/typography": "^0.5.16",

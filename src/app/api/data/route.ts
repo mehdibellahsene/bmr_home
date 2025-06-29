@@ -1,110 +1,103 @@
+/**
+ * Portfolio Data API - Simplified MongoDB Only
+ */
+
 import { NextRequest, NextResponse } from 'next/server';
-import { mongoDb } from '@/lib/database-mongo';
+import { getPortfolioData, checkDatabaseHealth, getDatabaseStats, updateProfile, upsertLinks } from '@/lib/database-simple';
 
 // Check if user is authenticated
-function isAuthenticated(request: NextRequest): boolean {
+function checkAuth(request: NextRequest) {
   const authCookie = request.cookies.get('admin-auth');
-  return authCookie?.value === 'authenticated';
+  return authCookie && authCookie.value === 'authenticated';
 }
 
-export async function GET(request: NextRequest) {
-  const startTime = Date.now();
-  console.log('[API] /api/data - Request started');
+export async function GET(request: Request) {
+  console.log('[API] /api/data - GET Request started');
   
   try {
-    // Check if this is a validation request
     const url = new URL(request.url);
-    const isValidation = url.searchParams.has('validate');
-    const isHealthCheck = url.searchParams.has('health');
-    const isStats = url.searchParams.has('stats');
+    const healthCheck = url.searchParams.get('health');
+    const stats = url.searchParams.get('stats');
     
-    if (isHealthCheck) {
-      console.log('[API] Health check request');
-      const health = await mongoDb.healthCheck();
+    // Health check endpoint
+    if (healthCheck === 'true') {
+      const health = await checkDatabaseHealth();
       return NextResponse.json(health);
     }
     
-    if (isStats) {
-      console.log('[API] Stats request');
-      const stats = await mongoDb.getStats();
-      return NextResponse.json(stats);
+    // Stats endpoint
+    if (stats === 'true') {
+      const statistics = await getDatabaseStats();
+      return NextResponse.json(statistics);
     }
     
-    if (isValidation) {
-      console.log('[API] Validation request');
-      const data = await mongoDb.getPortfolioData();
-      const validation = {
-        status: 'success',
-        timestamp: new Date().toISOString(),
-        data: {
-          hasNotes: Array.isArray(data.notes),
-          notesCount: Array.isArray(data.notes) ? data.notes.length : 0,
-          hasLearning: Array.isArray(data.learning),
-          learningCount: Array.isArray(data.learning) ? data.learning.length : 0,
-          hasProfile: !!data.profile,
-          hasLinks: !!data.links,
-        },
-        rawData: {
-          notes: data.notes || [],
-          learning: data.learning || [],
-        }
-      };
-      
-      return NextResponse.json(validation);
-    }
+    // Get complete portfolio data
+    const portfolioData = await getPortfolioData();
     
-    // Regular data request - get fresh data from MongoDB
-    const data = await mongoDb.getPortfolioData();
+    console.log('[API] /api/data - GET Success');
+    return NextResponse.json(portfolioData);
     
-    // Remove admin credentials from response if they exist
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { admin: _admin, ...publicData } = data as unknown as Record<string, unknown>;
+  } catch (error: unknown) {
+    console.error('[API] /api/data - GET Error:', error);
     
-    // Use proper caching headers for better performance
-    const response = NextResponse.json(publicData);
-    response.headers.set('Cache-Control', 'public, max-age=60, stale-while-revalidate=300');
-    response.headers.set('X-Data-Source', 'mongodb');
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     
-    const duration = Date.now() - startTime;
-    console.log(`[API] /api/data - Request completed in ${duration}ms`);
-    
-    return response;
-  } catch (error) {
-    const duration = Date.now() - startTime;
-    console.error(`[API] /api/data - Failed after ${duration}ms:`, error);
     return NextResponse.json(
-      { error: 'Failed to read data. Please check your database connection.' }, 
+      { 
+        error: 'Failed to fetch portfolio data',
+        details: errorMessage,
+        timestamp: new Date().toISOString()
+      },
       { status: 500 }
     );
   }
 }
 
 export async function POST(request: NextRequest) {
-  try {
-    // Check authentication
-    if (!isAuthenticated(request)) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+  console.log('[API] /api/data - POST Request started');
+  
+  if (!checkAuth(request)) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
 
+  try {
     const body = await request.json();
     
-    // Filter out admin credentials from updates
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { admin: _admin, ...updateData } = body;
-
-    // Update profile if provided
-    if (updateData.profile) {
-      await mongoDb.upsertProfile(updateData.profile);
+    // Handle profile update
+    if (body.profile) {
+      const updatedProfile = await updateProfile(body.profile);
+      if (updatedProfile) {
+        console.log('[API] /api/data - Profile updated successfully');
+        return NextResponse.json({ success: true, message: 'Profile updated successfully' });
+      } else {
+        throw new Error('Failed to update profile');
+      }
     }
-
-    return NextResponse.json({ 
-      success: true, 
-      message: 'Data updated successfully in MongoDB' 
-    });
-  } catch (error) {
-    console.error('Failed to update data:', error);
+    
+    // Handle links update
+    if (body.links) {
+      const updatedLinks = await upsertLinks(body.links);
+      if (updatedLinks) {
+        console.log('[API] /api/data - Links updated successfully');
+        return NextResponse.json({ success: true, message: 'Links updated successfully' });
+      } else {
+        throw new Error('Failed to update links');
+      }
+    }
+    
+    return NextResponse.json({ error: 'No valid data provided' }, { status: 400 });
+    
+  } catch (error: unknown) {
+    console.error('[API] /api/data - POST Error:', error);
+    
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    
     return NextResponse.json(
-      { error: 'Failed to update data. Please check your database connection.' }, 
+      { 
+        error: 'Failed to update data',
+        details: errorMessage,
+        timestamp: new Date().toISOString()
+      },
       { status: 500 }
     );
   }

@@ -7,6 +7,7 @@
 
 import { connectToMongoDB } from './mongodb';
 import { Profile, Link, Note, Learning } from './models';
+import mongoose from 'mongoose';
 
 // Types for the API layer
 export interface ProfileData {
@@ -102,6 +103,11 @@ export class MongoDatabase {
   private async ensureConnection(): Promise<void> {
     return withRetry(async () => {
       await connectToMongoDB();
+      
+      // Additional check to ensure connection is ready
+      if (mongoose.connection.readyState !== 1) {
+        throw new Error('MongoDB connection not ready');
+      }
     }, 3, 1000);
   }
 

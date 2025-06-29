@@ -1,5 +1,9 @@
+/**
+ * Migration API - Simplified MongoDB Only
+ */
+
 import { NextRequest, NextResponse } from 'next/server';
-import { mongoDb } from '@/lib/database-mongo';
+import { checkDatabaseHealth, getDatabaseStats } from '@/lib/database-simple';
 import fs from 'fs';
 import path from 'path';
 
@@ -19,63 +23,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check if portfolio.json exists
-    const dataPath = path.join(process.cwd(), 'data', 'portfolio.json');
-    if (!fs.existsSync(dataPath)) {
-      return NextResponse.json({
-        success: false,
-        message: 'No portfolio.json file found to migrate'
-      }, { status: 404 });
-    }
-
-    // Read portfolio data from filesystem
-    const portfolioData = JSON.parse(fs.readFileSync(dataPath, 'utf8'));
-    console.log('📖 Loaded portfolio data from filesystem');
-
-    let migratedCount = 0;
-
-    // Migrate profile
-    if (portfolioData.profile) {
-      await mongoDb.upsertProfile(portfolioData.profile);
-      console.log('✅ Migrated profile data');
-      migratedCount++;
-    }
-
-    // Migrate notes
-    if (portfolioData.notes && Array.isArray(portfolioData.notes)) {
-      for (const note of portfolioData.notes) {
-        await mongoDb.createNote({
-          title: note.title,
-          content: note.content,
-          publishedAt: note.publishedAt,
-        });
-      }
-      console.log(`✅ Migrated ${portfolioData.notes.length} notes`);
-      migratedCount += portfolioData.notes.length;
-    }
-
-    // Migrate learning
-    if (portfolioData.learning && Array.isArray(portfolioData.learning)) {
-      for (const item of portfolioData.learning) {
-        await mongoDb.createLearning({
-          title: item.title,
-          description: item.description,
-          type: item.type,
-          date: item.date,
-        });
-      }
-      console.log(`✅ Migrated ${portfolioData.learning.length} learning items`);
-      migratedCount += portfolioData.learning.length;
-    }
-
     return NextResponse.json({
       success: true,
-      message: `Successfully migrated ${migratedCount} items to MongoDB`,
-      details: {
-        profile: portfolioData.profile ? 1 : 0,
-        notes: portfolioData.notes ? portfolioData.notes.length : 0,
-        learning: portfolioData.learning ? portfolioData.learning.length : 0,
-      }
+      message: 'Migration functionality moved to scripts/mongodb-setup-simple.js',
+      note: 'Use: node scripts/mongodb-setup-simple.js migrate'
     });
   } catch (error) {
     console.error('Migration error:', error);
@@ -104,18 +55,18 @@ export async function GET(request: NextRequest) {
     const hasPortfolioFile = fs.existsSync(dataPath);
     
     // Get MongoDB health status
-    const health = await mongoDb.healthCheck();
+    const health = await checkDatabaseHealth();
     
     // Get current data stats
-    const stats = await mongoDb.getStats();
+    const stats = await getDatabaseStats();
     
     return NextResponse.json({
       mongoDBConfigured: !!process.env.MONGODB_URI,
-      mongoDBHealthy: health.status === 'healthy',
+      mongoDBHealthy: health.connected,
       hasPortfolioFile,
       currentDataStats: stats,
       canMigrate: !!process.env.MONGODB_URI && hasPortfolioFile,
-      healthDetails: health.details
+      migrationScript: 'Use: node scripts/mongodb-setup-simple.js migrate'
     });
   } catch (error) {
     console.error('Migration status error:', error);

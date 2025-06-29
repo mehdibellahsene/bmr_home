@@ -1,5 +1,12 @@
+/**
+ * Database Mode API - Simplified (MongoDB Only)
+ * 
+ * Since we now use MongoDB exclusively, this endpoint returns 
+ * the current MongoDB status
+ */
+
 import { NextRequest, NextResponse } from 'next/server';
-import { PortfolioDatabase } from '@/lib/database';
+import { checkDatabaseHealth } from '@/lib/database-simple';
 
 // Check if user is authenticated
 function isAuthenticated(request: NextRequest): boolean {
@@ -17,25 +24,18 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const body = await request.json();
-    const { mode } = body;
-    
-    if (mode !== 'mongodb' && mode !== 'filesystem') {
-      return NextResponse.json({
-        error: 'Invalid mode. Must be "mongodb" or "filesystem"'
-      }, { status: 400 });
-    }
-
-    const db = PortfolioDatabase.getInstance();
-    db.setMongoDBMode(mode === 'mongodb');
+    // Since we're MongoDB-only now, just return the current status
+    const health = await checkDatabaseHealth();
     
     return NextResponse.json({
       success: true,
-      message: `Database mode set to ${mode}`,
-      currentMode: mode
+      message: 'Application uses MongoDB exclusively',
+      currentMode: 'mongodb',
+      connected: health.connected,
+      error: health.error
     });
   } catch (error) {
-    console.error('Database mode switch error:', error);
+    console.error('Database mode check error:', error);
     return NextResponse.json(
       { error: 'Internal server error', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
