@@ -441,7 +441,15 @@ export async function getNotes(): Promise<NoteData[]> {
     },
     () => {
       const data = getPortfolioFromJSON();
-      return data.notes || [];
+      const notes = data.notes || [];
+      return notes.map(note => ({
+        id: note.id,
+        title: note.title,
+        content: note.content,
+        publishedAt: note.publishedAt,
+        createdAt: note.createdAt || new Date().toISOString(),
+        updatedAt: note.updatedAt || new Date().toISOString(),
+      }));
     }
   );
 }
@@ -534,7 +542,15 @@ export async function getLearning(): Promise<LearningData[]> {
     },
     () => {
       const data = getPortfolioFromJSON();
-      return data.learning || [];
+      const learning = data.learning || [];
+      return learning.map(item => ({
+        id: item.id,
+        title: item.title,
+        description: item.description,
+        type: item.type,
+        date: item.date,
+        createdAt: item.createdAt || new Date().toISOString(),
+      }));
     }
   );
 }
