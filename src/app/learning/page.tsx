@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useData } from '@/components/DataProvider';
+import { LearningPageSkeleton } from '@/components/SkeletonLoader';
 
 interface Learning {
   id: string;
@@ -13,7 +14,12 @@ interface Learning {
 }
 
 export default function Learning() {
-  const { data, error, refetchData } = useData();
+  const { data, error, refetchData, isInitialLoading, isLoading } = useData();
+  
+  // Show skeleton loader during initial load
+  if (isInitialLoading && !data) {
+    return <LearningPageSkeleton />;
+  }
   
   const learning = data?.learning || [];
   const portfolioData = data;
@@ -22,14 +28,26 @@ export default function Learning() {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
         <div className="text-center max-w-md mx-auto p-6">
-          <div className="text-red-400 mb-4">⚠️ Error loading learning data</div>
-          <div className="text-gray-300 mb-4">{error}</div>
-          <button 
-            onClick={() => refetchData(true)}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded transition-colors"
-          >
-            Retry
-          </button>
+          <div className="text-red-400 mb-4 text-6xl">⚠️</div>
+          <div className="text-red-400 mb-4 text-xl font-semibold">Error loading learning data</div>
+          <div className="text-gray-300 mb-6 text-sm bg-gray-900 p-4 rounded-lg border border-gray-800">
+            {error}
+          </div>
+          <div className="space-y-3">
+            <button 
+              onClick={() => refetchData(true)}
+              disabled={isLoading}
+              className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800 text-white px-6 py-3 rounded-lg transition-colors font-medium"
+            >
+              {isLoading ? 'Retrying...' : 'Retry Loading'}
+            </button>
+            <Link 
+              href="/"
+              className="block w-full bg-gray-700 hover:bg-gray-600 text-white px-6 py-3 rounded-lg transition-colors text-center"
+            >
+              Go Home
+            </Link>
+          </div>
         </div>
       </div>
     );

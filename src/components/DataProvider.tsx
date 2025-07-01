@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, ReactNode, useCallback, useRef } from 'react';
 import { useLoading } from './LoadingProvider';
 
 interface PortfolioData {
@@ -40,6 +40,8 @@ interface DataContextType {
   error: string | null;
   refetchData: (force?: boolean) => Promise<void>;
   lastUpdated: Date | null;
+  isLoading: boolean;
+  isInitialLoading: boolean;
 }
 
 const DataContext = createContext<DataContextType | undefined>(undefined);
@@ -48,108 +50,96 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const [data, setData] = useState<PortfolioData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isInitialLoading, setIsInitialLoading] = useState(true);
+  const hasInitialized = useRef(false);
   const { setLoading, setLoadingMessage } = useLoading();
 
-  const fetchData = async (force = false) => {
+  const fetchData = useCallback(async (force = false) => {
     try {
+      console.log('[DataProvider] Starting fetchData, force:', force);
       setError(null);
+      setIsLoading(true);
       
-      if (!data || force) {
+      if (!hasInitialized.current) {
         setLoading(true);
         setLoadingMessage('Loading portfolio data...');
       }
 
       const url = force ? '/api/data?refresh=true' : '/api/data';
+      console.log('[DataProvider] Fetching from:', url);
+      
       const response = await fetch(url, {
         next: { revalidate: 60 }, // Cache for 60 seconds
+        headers: {
+          'Cache-Control': force ? 'no-cache' : 'max-age=60'
+        }
       });
+      
+      console.log('[DataProvider] Response status:', response.status);
       
       if (response.ok) {
         const portfolioData = await response.json();
-        setData(portfolioData);
+        console.log('[DataProvider] Raw data received:', portfolioData);
+        
+        // Validate and sanitize the data
+        const validatedData = {
+          profile: {
+            name: portfolioData.profile?.name || 'Portfolio Owner',
+            title: portfolioData.profile?.title || 'Developer',
+            location: portfolioData.profile?.location || 'Unknown',
+            email: portfolioData.profile?.email || 'contact@example.com',
+            skills: portfolioData.profile?.skills || 'Skills not listed',
+            interests: portfolioData.profile?.interests || 'Interests not listed',
+            homeImage: portfolioData.profile?.homeImage || ''
+          },
+          links: {
+            work: Array.isArray(portfolioData.links?.work) ? portfolioData.links.work : [],
+            presence: Array.isArray(portfolioData.links?.presence) ? portfolioData.links.presence : []
+          },
+          notes: Array.isArray(portfolioData.notes) ? portfolioData.notes : [],
+          learning: Array.isArray(portfolioData.learning) ? portfolioData.learning : []
+        };
+        
+        console.log('[DataProvider] Validated data:', validatedData);
+        setData(validatedData);
         setLastUpdated(new Date());
+        setError(null);
+        setIsInitialLoading(false);
       } else {
-        const errorMsg = `API error: ${response.status} ${response.statusText}`;
-        console.error(errorMsg);
+        const errorData = await response.json().catch(() => ({}));
+        const errorMsg = errorData.error || `API error: ${response.status} ${response.statusText}`;
+        console.error('[DataProvider] API Error:', errorMsg);
         setError(errorMsg);
+        setIsInitialLoading(false);
       }
     } catch (error) {
-      let errorMsg = 'Unknown error occurred';
+      let errorMsg = 'Failed to connect to the server';
       if (error instanceof Error) {
-        errorMsg = `Network error: ${error.message}`;
+        errorMsg = error.message.includes('fetch') 
+          ? 'Network connection failed. Please check your internet connection.'
+          : `Network error: ${error.message}`;
       }
-      console.error('Error fetching portfolio data:', error);
+      console.error('[DataProvider] Error:', error);
       setError(errorMsg);
+      setIsInitialLoading(false);
     } finally {
-      setLoading(false);
+      setIsLoading(false);
+      if (!hasInitialized.current) {
+        setLoading(false);
+      }
     }
-  };
+  }, [setLoading, setLoadingMessage]); // Removed isInitialLoading dependency
+
+  // Single useEffect for initial data fetch
   useEffect(() => {
-    let mounted = true;
-    
-    const fetchDataEffect = async (force = false) => {
-      try {
-        setError(null);
-        
-        if (!data || force) {
-          setLoading(true);
-          setLoadingMessage('Loading portfolio data...');
-        }
-
-        const url = force ? '/api/data?refresh=true' : '/api/data';
-        const response = await fetch(url, {
-          next: { revalidate: 60 }, // Cache for 60 seconds
-        });
-        
-        if (response.ok && mounted) {
-          const portfolioData = await response.json();
-          setData(portfolioData);
-          setLastUpdated(new Date());
-        } else if (mounted) {
-          const errorMsg = `API error: ${response.status} ${response.statusText}`;
-          console.error(errorMsg);
-          setError(errorMsg);
-        }
-      } catch (error) {
-        if (!mounted) return;
-        
-        let errorMsg = 'Unknown error occurred';
-        if (error instanceof Error) {
-          errorMsg = `Network error: ${error.message}`;
-        }
-        console.error('Error fetching portfolio data:', error);
-        setError(errorMsg);
-      } finally {
-        if (mounted) {
-          setLoading(false);
-        }
-      }
-    };
-
-    fetchDataEffect();
-    
-    // Reduced polling interval - only refresh every 5 minutes
-    const interval = setInterval(() => fetchDataEffect(), 300000);
-    
-    // Listen for visibility change to refresh when user returns to tab
-    const handleVisibilityChange = () => {
-      if (!document.hidden && lastUpdated) {
-        // Only refresh if data is older than 2 minutes
-        const twoMinutesAgo = new Date(Date.now() - 2 * 60 * 1000);
-        if (lastUpdated < twoMinutesAgo) {
-          fetchDataEffect();
-        }
-      }
-    };
-    
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    
-    return () => {
-      mounted = false;
-      clearInterval(interval);
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-    };
-  }, [data, setLoading, setLoadingMessage, lastUpdated]);
+    console.log('[DataProvider] useEffect triggered, hasInitialized:', hasInitialized.current);
+    if (!hasInitialized.current) {
+      hasInitialized.current = true;
+      console.log('[DataProvider] Triggering initial fetch');
+      fetchData();
+    }
+  }, [fetchData]); // Only depend on fetchData
 
   const refetchData = async (force = false) => {
     await fetchData(force);
@@ -160,7 +150,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
       data, 
       error, 
       refetchData, 
-      lastUpdated 
+      lastUpdated,
+      isLoading,
+      isInitialLoading
     }}>
       {children}
     </DataContext.Provider>

@@ -7,6 +7,15 @@ export async function POST(request: NextRequest) {
     const adminUsername = process.env.ADMIN_USERNAME;
     const adminPassword = process.env.ADMIN_PASSWORD;
     
+    console.log('Auth attempt:', {
+      receivedUsername: username,
+      receivedPassword: password ? '***HIDDEN***' : 'EMPTY',
+      envUsername: adminUsername,
+      envPassword: adminPassword ? '***HIDDEN***' : 'EMPTY',
+      usernameMatch: username === adminUsername,
+      passwordMatch: password === adminPassword
+    });
+    
     if (!adminUsername || !adminPassword) {
       console.error('Missing environment variables:', {
         adminUsername: !!adminUsername,
@@ -16,6 +25,7 @@ export async function POST(request: NextRequest) {
     }
     
     if (username === adminUsername && password === adminPassword) {
+      console.log('Login successful for user:', username);
       // In a real app, you'd create a JWT token here
       const response = NextResponse.json({ success: true, message: 'Login successful' });
       response.cookies.set('admin-auth', 'authenticated', {
@@ -26,6 +36,7 @@ export async function POST(request: NextRequest) {
       });
       return response;
     } else {
+      console.log('Login failed - credentials mismatch');
       return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 });
     }
   } catch (error) {

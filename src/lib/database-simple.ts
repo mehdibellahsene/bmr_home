@@ -57,23 +57,63 @@ export interface PortfolioData {
   learning: LearningData[];
 }
 
+// Connection state cache
+const connectionState: {
+  available: boolean;
+  lastChecked: number;
+  cacheTimeout: number;
+} = {
+  available: false,
+  lastChecked: 0,
+  cacheTimeout: 30000, // 30 seconds cache
+};
+
 /**
- * Check if MongoDB is available
+ * Check if MongoDB is available with caching
  */
 async function isMongoDBAvailable(): Promise<boolean> {
+  const now = Date.now();
+  
+  // Return cached result if still valid
+  if (now - connectionState.lastChecked < connectionState.cacheTimeout) {
+    return connectionState.available;
+  }
+  
   try {
     const uri = process.env.MONGODB_URI;
-    if (!uri) return false;
+    if (!uri) {
+      connectionState.available = false;
+      connectionState.lastChecked = now;
+      return false;
+    }
     
-    if (mongoose.connection.readyState === 1) return true;
+    if (mongoose.connection.readyState === 1) {
+      // Test the existing connection
+      try {
+        await mongoose.connection.db?.admin().ping();
+        connectionState.available = true;
+        connectionState.lastChecked = now;
+        return true;
+      } catch {
+        // Connection is stale, close it
+        await mongoose.disconnect();
+      }
+    }
     
     await mongoose.connect(uri, {
-      serverSelectionTimeoutMS: 5000,
-      connectTimeoutMS: 5000,
-      socketTimeoutMS: 5000,
+      serverSelectionTimeoutMS: 3000,
+      connectTimeoutMS: 3000,
+      socketTimeoutMS: 3000,
+      maxPoolSize: 1,
+      bufferCommands: false, // Fail fast if not connected
     });
+    
+    connectionState.available = true;
+    connectionState.lastChecked = now;
     return true;
   } catch {
+    connectionState.available = false;
+    connectionState.lastChecked = now;
     return false;
   }
 }
@@ -145,25 +185,33 @@ function savePortfolioToJSON(data: PortfolioData): boolean {
 }
 
 /**
- * Simple MongoDB connection helper
+ * Simple MongoDB connection helper - optimized version
  */
 async function ensureConnection(): Promise<void> {
-  if (mongoose.connection.readyState !== 1) {
-    const uri = process.env.MONGODB_URI;
-    if (!uri) {
-      throw new Error('MONGODB_URI environment variable is not set');
+  // If we have a healthy connection, reuse it
+  if (mongoose.connection.readyState === 1) {
+    try {
+      await mongoose.connection.db?.admin().ping();
+      return; // Connection is healthy
+    } catch {
+      // Connection is stale, will reconnect below
     }
-
-    await mongoose.connect(uri, {
-      serverSelectionTimeoutMS: 10000,
-      connectTimeoutMS: 10000,
-      socketTimeoutMS: 10000,
-    });
   }
+  
+  const uri = process.env.MONGODB_URI;
+  if (!uri) {
+    throw new Error('MONGODB_URI environment variable is not set');
+  }
+
+  await mongoose.connect(uri, {
+    serverSelectionTimeoutMS: 10000,
+    connectTimeoutMS: 10000,
+    socketTimeoutMS: 10000,
+  });
 }
 
 /**
- * Retry wrapper with fallback
+ * Optimized retry wrapper with connection reuse
  */
 async function withRetryAndFallback<T>(
   mongoOperation: () => Promise<T>, 
@@ -172,6 +220,7 @@ async function withRetryAndFallback<T>(
 ): Promise<T> {
   console.log('[DB] Attempting MongoDB operation...');
   
+  // Use cached connection state
   const mongoAvailable = await isMongoDBAvailable();
   
   if (!mongoAvailable) {
@@ -184,7 +233,10 @@ async function withRetryAndFallback<T>(
   for (let i = 0; i <= retries; i++) {
     try {
       console.log(`[DB] MongoDB attempt ${i + 1}/${retries + 1}`);
-      await ensureConnection();
+      // Connection should already be established from isMongoDBAvailable check
+      if (mongoose.connection.readyState !== 1) {
+        await ensureConnection();
+      }
       const result = await mongoOperation();
       console.log('[DB] MongoDB operation successful');
       return result;
@@ -210,14 +262,17 @@ async function withRetryAndFallback<T>(
 }
 
 /**
- * Simple retry wrapper for MongoDB operations
+ * Optimized retry wrapper for MongoDB operations
  */
 async function withRetry<T>(operation: () => Promise<T>, retries = 2): Promise<T> {
   let lastError: Error | unknown;
   
   for (let i = 0; i <= retries; i++) {
     try {
-      await ensureConnection();
+      // Reuse existing connection if available
+      if (mongoose.connection.readyState !== 1) {
+        await ensureConnection();
+      }
       return await operation();
     } catch (error: unknown) {
       lastError = error;
@@ -318,31 +373,49 @@ export async function updateProfile(data: Partial<ProfileData>): Promise<Profile
 // ==================== LINK OPERATIONS ====================
 
 export async function getLinks(): Promise<{ work: LinkData[]; presence: LinkData[] }> {
-  return withRetry(async () => {
-    const links = await Link.find().sort({ createdAt: 1 });
-    
-    const work = links
-      .filter(link => link.category === 'work')
-      .map(link => ({
-        id: link.linkId,
-        name: link.name,
-        url: link.url,
-        icon: link.icon,
-        category: link.category as 'work',
+  return withRetryAndFallback<{ work: LinkData[]; presence: LinkData[] }>(
+    async () => {
+      const links = await Link.find().sort({ createdAt: 1 });
+      
+      const work: LinkData[] = links
+        .filter(link => link.category === 'work')
+        .map(link => ({
+          id: link.linkId,
+          name: link.name,
+          url: link.url,
+          icon: link.icon,
+          category: 'work' as const,
+        }));
+      
+      const presence: LinkData[] = links
+        .filter(link => link.category === 'presence')
+        .map(link => ({
+          id: link.linkId,
+          name: link.name,
+          url: link.url,
+          icon: link.icon,
+          category: 'presence' as const,
+        }));
+      
+      return { work, presence };
+    },
+    () => {
+      const data = getPortfolioFromJSON();
+      const links = data.links || { work: [], presence: [] };
+      
+      // Ensure proper typing with explicit casting
+      const work: LinkData[] = links.work.map(link => ({
+        ...link,
+        category: 'work' as const
       }));
-    
-    const presence = links
-      .filter(link => link.category === 'presence')
-      .map(link => ({
-        id: link.linkId,
-        name: link.name,
-        url: link.url,
-        icon: link.icon,
-        category: link.category as 'presence',
+      const presence: LinkData[] = links.presence.map(link => ({
+        ...link,
+        category: 'presence' as const
       }));
-    
-    return { work, presence };
-  });
+      
+      return { work, presence };
+    }
+  );
 }
 
 export async function createLink(data: LinkData): Promise<LinkData> {
@@ -628,44 +701,120 @@ export async function deleteLearning(id: string): Promise<boolean> {
 
 // ==================== PORTFOLIO DATA ====================
 
+/**
+ * Optimized function to get all portfolio data with single DB connection check
+ */
 export async function getPortfolioData(): Promise<PortfolioData> {
-  return withRetryAndFallback(
-    async () => {
-      const [profile, links, notes, learning] = await Promise.all([
-        getProfile(),
-        getLinks(),
-        getNotes(),
-        getLearning(),
-      ]);
-      
-      // Provide default profile if none exists
-      const defaultProfile: ProfileData = {
-        name: 'BMR Portfolio',
-        title: 'Full Stack Developer',
-        location: 'Remote',
-        email: 'contact@example.com',
-        skills: 'JavaScript, TypeScript, React, Node.js',
-        interests: 'Web Development, AI, Open Source',
-      };
-      
-      return {
-        profile: profile || defaultProfile,
-        links,
-        notes,
-        learning,
-      };
-    },
-    () => getPortfolioFromJSON()
-  );
+  console.log('[DB] Getting portfolio data...');
+  
+  // Check MongoDB availability once
+  const mongoAvailable = await isMongoDBAvailable();
+  
+  if (!mongoAvailable) {
+    console.log('[DB] MongoDB not available, using JSON fallback for all data');
+    return getPortfolioFromJSON();
+  }
+  
+  // Try MongoDB operations with single connection
+  try {
+    console.log('[DB] Using MongoDB for portfolio data');
+    await ensureConnection();
+    
+    // Perform all database operations in parallel with existing connection
+    const [profileDoc, links, notes, learning] = await Promise.all([
+      Profile.findOne().sort({ createdAt: -1 }),
+      Link.find().sort({ createdAt: 1 }),
+      Note.find().sort({ createdAt: -1 }),
+      Learning.find().sort({ createdAt: -1 })
+    ]);
+    
+    // Transform profile data
+    const profile: ProfileData = profileDoc ? {
+      name: profileDoc.name,
+      title: profileDoc.title,
+      location: profileDoc.location,
+      email: profileDoc.email,
+      skills: profileDoc.skills,
+      interests: profileDoc.interests,
+      homeImage: profileDoc.homeImage || '',
+    } : {
+      name: 'BMR Portfolio',
+      title: 'Full Stack Developer',
+      location: 'Remote',
+      email: 'contact@example.com',
+      skills: 'JavaScript, TypeScript, React, Node.js',
+      interests: 'Web Development, AI, Open Source',
+    };
+    
+    // Transform links data
+    const work = links
+      .filter(link => link.category === 'work')
+      .map(link => ({
+        id: link.linkId,
+        name: link.name,
+        url: link.url,
+        icon: link.icon,
+        category: link.category as 'work',
+      }));
+    
+    const presence = links
+      .filter(link => link.category === 'presence')
+      .map(link => ({
+        id: link.linkId,
+        name: link.name,
+        url: link.url,
+        icon: link.icon,
+        category: link.category as 'presence',
+      }));
+    
+    // Transform notes data
+    const notesData = notes.map(note => ({
+      id: note.noteId,
+      title: note.title,
+      content: note.content,
+      publishedAt: note.publishedAt,
+      createdAt: note.createdAt?.toISOString(),
+      updatedAt: note.updatedAt?.toISOString(),
+    }));
+    
+    // Transform learning data
+    const learningData = learning.map(item => ({
+      id: item.learningId,
+      title: item.title,
+      description: item.description,
+      type: item.type,
+      date: item.date,
+      createdAt: item.createdAt?.toISOString(),
+    }));
+    
+    console.log('[DB] MongoDB portfolio data retrieved successfully');
+    return {
+      profile,
+      links: { work, presence },
+      notes: notesData,
+      learning: learningData,
+    };
+    
+  } catch (error) {
+    console.warn('[DB] MongoDB operation failed, falling back to JSON:', error instanceof Error ? error.message : error);
+    return getPortfolioFromJSON();
+  }
 }
 
 // ==================== CONNECTION HEALTH ====================
+
+/**
+ * Invalidate connection cache (useful for testing or when connection state changes)
+ */
+export function invalidateConnectionCache(): void {
+  connectionState.lastChecked = 0;
+}
 
 export async function checkDatabaseHealth(): Promise<{ connected: boolean; error?: string; fallbackMode?: boolean }> {
   try {
     const mongoAvailable = await isMongoDBAvailable();
     if (mongoAvailable) {
-      await mongoose.connection.db?.admin().ping();
+      // Connection should already be tested in isMongoDBAvailable
       return { connected: true };
     } else {
       return { 

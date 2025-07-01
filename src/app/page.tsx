@@ -3,38 +3,75 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useData } from '@/components/DataProvider';
+import { HomePageSkeleton } from '@/components/SkeletonLoader';
 
 export default function Home() {
-  const { data, error, refetchData } = useData();
+  const { data, error, refetchData, isInitialLoading, isLoading } = useData();
+
+  // Show skeleton loader during initial load
+  if (isInitialLoading && !data) {
+    return <HomePageSkeleton />;
+  }
 
   if (error) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
         <div className="text-center max-w-md mx-auto p-6">
-          <div className="text-red-400 mb-4">⚠️ Error loading portfolio</div>
-          <div className="text-gray-300 mb-4">{error}</div>
-          <button 
-            onClick={() => refetchData(true)}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded transition-colors"
-          >
-            Retry
-          </button>
+          <div className="text-red-400 mb-4 text-6xl">⚠️</div>
+          <div className="text-red-400 mb-4 text-xl font-semibold">Error loading portfolio</div>
+          <div className="text-gray-300 mb-6 text-sm bg-gray-900 p-4 rounded-lg border border-gray-800">
+            {error}
+          </div>
+          <div className="space-y-3">
+            <button 
+              onClick={() => refetchData(true)}
+              disabled={isLoading}
+              className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800 text-white px-6 py-3 rounded-lg transition-colors font-medium"
+            >
+              {isLoading ? 'Retrying...' : 'Retry Loading'}
+            </button>
+            <button 
+              onClick={() => window.location.reload()}
+              className="w-full bg-gray-700 hover:bg-gray-600 text-white px-6 py-3 rounded-lg transition-colors"
+            >
+              Refresh Page
+            </button>
+          </div>
         </div>
       </div>
     );
   }
+
   if (!data) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
         <div className="text-center">
-          <div className="text-white">No portfolio data available</div>
+          <div className="text-white text-xl mb-4">No portfolio data available</div>
+          <button 
+            onClick={() => refetchData(true)}
+            className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg transition-colors"
+          >
+            Load Data
+          </button>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-black flex">{/* Sidebar Navigation */}
+    <div className="min-h-screen bg-black flex">
+      {/* Refresh Indicator */}
+      {isLoading && data && (
+        <div className="fixed top-4 right-4 bg-blue-600 text-white px-4 py-2 rounded-lg shadow-lg z-50 flex items-center space-x-2">
+          <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg>
+          <span className="text-sm">Refreshing...</span>
+        </div>
+      )}
+      
+      {/* Sidebar Navigation */}
       <aside className="w-64 bg-black border-r border-gray-800 p-6 shadow-xl">
         <div className="mb-8">
           <h1 className="text-xl font-semibold text-white">{data.profile.name}</h1>
@@ -142,7 +179,9 @@ export default function Home() {
                   </svg>
                   <h3 className="font-semibold text-white">Skills:</h3>
                 </div>
-                <p className="text-gray-300">{data.profile.skills}</p>
+                <p className="text-gray-300">
+                  {data.profile.skills || 'No skills listed yet'}
+                </p>
               </div>
 
               {/* Interests Section */}
@@ -153,7 +192,9 @@ export default function Home() {
                   </svg>
                   <h3 className="font-semibold text-white">Interests:</h3>
                 </div>
-                <p className="text-gray-300">{data.profile.interests}</p>
+                <p className="text-gray-300">
+                  {data.profile.interests || 'No interests listed yet'}
+                </p>
               </div>
 
               {/* Contact Info */}
