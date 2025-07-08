@@ -55,6 +55,18 @@
       "description": "ALSD",
       "type": "course",
       "date": "2025-06-24",
+      "links": [
+        {
+          "title": "Course Website",
+          "url": "https://example.com/course",
+          "description": "Main course platform"
+        },
+        {
+          "title": "Course Materials",
+          "url": "https://github.com/example/course-materials",
+          "description": "GitHub repository with exercises"
+        }
+      ],
       "createdAt": "2025-06-24T13:15:41.985Z"
     }
   ]

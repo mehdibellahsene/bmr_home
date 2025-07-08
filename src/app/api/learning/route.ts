@@ -53,6 +53,7 @@ export async function POST(request: NextRequest) {
       description: body.description,
       type: body.type,
       date: body.date,
+      links: body.links || [],
     });
 
     return NextResponse.json(newLearning, { status: 201 });

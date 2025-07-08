@@ -44,6 +44,11 @@ export interface LearningData {
   description: string;
   type: string;
   date: string;
+  links?: Array<{
+    title: string;
+    url: string;
+    description?: string;
+  }>;
   createdAt?: string;
 }
 
@@ -610,6 +615,7 @@ export async function getLearning(): Promise<LearningData[]> {
         description: item.description,
         type: item.type,
         date: item.date,
+        links: item.links || [],
         createdAt: item.createdAt?.toISOString(),
       }));
     },
@@ -622,6 +628,7 @@ export async function getLearning(): Promise<LearningData[]> {
         description: item.description,
         type: item.type,
         date: item.date,
+        links: item.links || [],
         createdAt: item.createdAt || new Date().toISOString(),
       }));
     }
@@ -629,74 +636,170 @@ export async function getLearning(): Promise<LearningData[]> {
 }
 
 export async function getLearningItem(id: string): Promise<LearningData | null> {
-  return withRetry(async () => {
-    const item = await Learning.findOne({ learningId: id });
-    if (!item) return null;
-    
-    return {
-      id: item.learningId,
-      title: item.title,
-      description: item.description,
-      type: item.type,
-      date: item.date,
-      createdAt: item.createdAt?.toISOString(),
-    };
-  });
+  return withRetryAndFallback(
+    async () => {
+      const item = await Learning.findOne({ learningId: id });
+      if (!item) return null;
+      
+      return {
+        id: item.learningId,
+        title: item.title,
+        description: item.description,
+        type: item.type,
+        date: item.date,
+        links: item.links || [],
+        createdAt: item.createdAt?.toISOString(),
+      };
+    },
+    () => {
+      // JSON fallback
+      const portfolioData = getPortfolioFromJSON();
+      const learningItem = portfolioData.learning.find(item => item.id === id);
+      
+      if (!learningItem) return null;
+      
+      return {
+        id: learningItem.id,
+        title: learningItem.title,
+        description: learningItem.description,
+        type: learningItem.type,
+        date: learningItem.date,
+        links: learningItem.links || [],
+        createdAt: learningItem.createdAt || new Date().toISOString(),
+      };
+    }
+  );
 }
 
 export async function createLearning(data: Omit<LearningData, 'id' | 'createdAt'>): Promise<LearningData> {
-  return withRetry(async () => {
-    const learningId = `learning-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-    
-    const item = new Learning({
-      learningId,
-      title: data.title,
-      description: data.description,
-      type: data.type,
-      date: data.date,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    });
-    
-    await item.save();
-    
-    return {
-      id: item.learningId,
-      title: item.title,
-      description: item.description,
-      type: item.type,
-      date: item.date,
-      createdAt: item.createdAt?.toISOString(),
-    };
-  });
+  return withRetryAndFallback(
+    async () => {
+      const learningId = `learning-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      
+      const item = new Learning({
+        learningId,
+        title: data.title,
+        description: data.description,
+        type: data.type,
+        date: data.date,
+        links: data.links || [],
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+      
+      await item.save();
+      
+      return {
+        id: item.learningId,
+        title: item.title,
+        description: item.description,
+        type: item.type,
+        date: item.date,
+        links: item.links || [],
+        createdAt: item.createdAt?.toISOString(),
+      };
+    },
+    () => {
+      // JSON fallback
+      const portfolioData = getPortfolioFromJSON();
+      const learningId = `learning-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      
+      const newLearning: LearningData = {
+        id: learningId,
+        title: data.title,
+        description: data.description,
+        type: data.type,
+        date: data.date,
+        links: data.links || [],
+        createdAt: new Date().toISOString(),
+      };
+      
+      portfolioData.learning.push(newLearning);
+      savePortfolioToJSON(portfolioData);
+      
+      return {
+        id: newLearning.id,
+        title: newLearning.title,
+        description: newLearning.description,
+        type: newLearning.type,
+        date: newLearning.date,
+        links: newLearning.links || [],
+        createdAt: newLearning.createdAt,
+      };
+    }
+  );
 }
 
 export async function updateLearning(id: string, data: Partial<Omit<LearningData, 'id'>>): Promise<LearningData | null> {
-  return withRetry(async () => {
-    const item = await Learning.findOneAndUpdate(
-      { learningId: id },
-      { ...data, updatedAt: new Date() },
-      { new: true }
-    );
-    
-    if (!item) return null;
-    
-    return {
-      id: item.learningId,
-      title: item.title,
-      description: item.description,
-      type: item.type,
-      date: item.date,
-      createdAt: item.createdAt?.toISOString(),
-    };
-  });
+  return withRetryAndFallback(
+    async () => {
+      const item = await Learning.findOneAndUpdate(
+        { learningId: id },
+        { ...data, updatedAt: new Date() },
+        { new: true }
+      );
+      
+      if (!item) return null;
+      
+      return {
+        id: item.learningId,
+        title: item.title,
+        description: item.description,
+        type: item.type,
+        date: item.date,
+        links: item.links || [],
+        createdAt: item.createdAt?.toISOString(),
+      };
+    },
+    () => {
+      // JSON fallback
+      const portfolioData = getPortfolioFromJSON();
+      const learningIndex = portfolioData.learning.findIndex(item => item.id === id);
+      
+      if (learningIndex === -1) return null;
+      
+      const existingLearning = portfolioData.learning[learningIndex];
+      const updatedLearning = {
+        ...existingLearning,
+        ...data,
+        links: data.links !== undefined ? data.links : existingLearning.links || [],
+      };
+      
+      portfolioData.learning[learningIndex] = updatedLearning;
+      savePortfolioToJSON(portfolioData);
+      
+      return {
+        id: updatedLearning.id,
+        title: updatedLearning.title,
+        description: updatedLearning.description,
+        type: updatedLearning.type,
+        date: updatedLearning.date,
+        links: updatedLearning.links || [],
+        createdAt: updatedLearning.createdAt || new Date().toISOString(),
+      };
+    }
+  );
 }
 
 export async function deleteLearning(id: string): Promise<boolean> {
-  return withRetry(async () => {
-    const result = await Learning.deleteOne({ learningId: id });
-    return result.deletedCount > 0;
-  });
+  return withRetryAndFallback(
+    async () => {
+      const result = await Learning.deleteOne({ learningId: id });
+      return result.deletedCount > 0;
+    },
+    () => {
+      // JSON fallback
+      const portfolioData = getPortfolioFromJSON();
+      const learningIndex = portfolioData.learning.findIndex(item => item.id === id);
+      
+      if (learningIndex === -1) return false;
+      
+      portfolioData.learning.splice(learningIndex, 1);
+      savePortfolioToJSON(portfolioData);
+      
+      return true;
+    }
+  );
 }
 
 // ==================== PORTFOLIO DATA ====================

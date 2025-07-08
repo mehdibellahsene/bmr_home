@@ -1,10 +1,10 @@
 'use client';
 
-import Link from "next/link";
 import ReactMarkdown from 'react-markdown';
 import { useState } from 'react';
 import { useData } from '@/components/DataProvider';
 import { NotesPageSkeleton } from '@/components/SkeletonLoader';
+import ResponsiveNavigation from '@/components/ResponsiveNavigation';
 
 interface Note {
   id: string;
@@ -35,218 +35,151 @@ export default function Notes() {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-black flex items-center justify-center">
-        <div className="text-center max-w-md mx-auto p-6">
-          <div className="text-red-400 mb-4 text-6xl">⚠️</div>
-          <div className="text-red-400 mb-4 text-xl font-semibold">Error loading notes</div>
-          <div className="text-gray-300 mb-6 text-sm bg-gray-900 p-4 rounded-lg border border-gray-800">
-            {error}
-          </div>
-          <div className="space-y-3">
-            <button 
-              onClick={() => refetchData(true)}
-              disabled={isLoading}
-              className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800 text-white px-6 py-3 rounded-lg transition-colors font-medium"
-            >
-              {isLoading ? 'Retrying...' : 'Retry Loading'}
-            </button>
-            <Link 
-              href="/"
-              className="block w-full bg-gray-700 hover:bg-gray-600 text-white px-6 py-3 rounded-lg transition-colors text-center"
-            >
-              Go Home
-            </Link>
+      <div className="min-h-screen bg-black">
+        <div className="lg:hidden pt-16"></div>
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="text-center max-w-md mx-auto p-6">
+            <div className="text-red-400 mb-4 text-6xl">⚠️</div>
+            <div className="text-red-400 mb-4 text-xl font-semibold">Error loading notes</div>
+            <div className="text-gray-300 mb-6 text-sm bg-gray-900 p-4 rounded-lg border border-gray-800">
+              {error}
+            </div>
+            <div className="space-y-3">
+              <button 
+                onClick={() => refetchData(true)}
+                disabled={isLoading}
+                className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800 text-white px-6 py-3 rounded-lg transition-colors font-medium"
+              >
+                {isLoading ? 'Retrying...' : 'Retry Loading'}
+              </button>
+            </div>
           </div>
         </div>
       </div>
     );
   }
 
-  const handleNoteSelect = (note: Note) => {
-    setSelectedNote(note);
-  };
-  const toggleFullscreen = () => {
-    setIsFullscreen(!isFullscreen);
-  };
-
   if (!portfolioData) {
     return (
-      <div className="min-h-screen bg-black flex items-center justify-center">
-        <div className="text-white">Loading portfolio data...</div>
+      <div className="min-h-screen bg-black">
+        <div className="lg:hidden pt-16"></div>
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="text-white">Loading notes...</div>
+        </div>
+      </div>
+    );
+  }
+
+  // Fullscreen view for mobile
+  if (isFullscreen && selectedNote) {
+    return (
+      <div className="fixed inset-0 bg-black z-50">
+        <div className="flex flex-col h-full">
+          <div className="flex items-center justify-between p-4 border-b border-gray-800">
+            <h2 className="text-white font-semibold truncate">{selectedNote.title}</h2>
+            <button
+              onClick={() => setIsFullscreen(false)}
+              className="text-gray-400 hover:text-white"
+            >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+          <div className="flex-1 overflow-y-auto p-4">
+            <div className="prose prose-invert max-w-none">
+              <ReactMarkdown>{selectedNote.content}</ReactMarkdown>
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-black flex">
-      {/* Sidebar Navigation */}
-      <aside className="w-64 bg-black border-r border-gray-800 p-6">
-        <div className="mb-8">
-          <h1 className="text-xl font-semibold text-white">{portfolioData.profile.name}</h1>
-          <p className="text-gray-400 text-sm mt-1">Portfolio</p>
-        </div>
-          <nav className="space-y-2">
-          <Link href="/" className="flex items-center space-x-3 text-gray-300 hover:text-white hover:bg-gray-900 px-4 py-3 rounded-lg transition-all duration-200">
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-            </svg>
-            <span>Home</span>
-          </Link>
-          <Link href="/notes" className="flex items-center space-x-3 text-white bg-gray-800 px-4 py-3 rounded-lg transition-all duration-200 hover:bg-gray-700">
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-            </svg>
-            <span className="font-medium">Notes</span>
-          </Link>
-          <Link href="/learning" className="flex items-center space-x-3 text-gray-300 hover:text-white hover:bg-gray-900 px-4 py-3 rounded-lg transition-all duration-200">
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-            </svg>
-            <span>Learning</span>
-          </Link>
-        </nav>        {portfolioData.links.work.length > 0 && (
-          <div className="mt-8">
-            <h3 className="text-sm font-medium text-gray-400 uppercase tracking-wider mb-4 flex items-center">
-              <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-              </svg>
-              Work
-            </h3>
-            <div className="space-y-2">
-              {portfolioData.links.work.map((link) => (
-                <a
-                  key={link.id}
-                  href={link.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center space-x-3 text-gray-300 hover:text-white hover:bg-gray-700 px-4 py-3 rounded-lg transition-all duration-200"
-                >
-                  <span>{link.icon}</span>
-                  <span>{link.name}</span>
-                </a>
-              ))}
-            </div>
-          </div>
-        )}        {portfolioData.links.presence.length > 0 && (
-          <div className="mt-8">
-            <h3 className="text-sm font-medium text-gray-400 uppercase tracking-wider mb-4 flex items-center">
-              <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
-              </svg>
-              Presence
-            </h3>
-            <div className="space-y-2">
-              {portfolioData.links.presence.map((link) => (
-                <a
-                  key={link.id}
-                  href={link.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center space-x-3 text-gray-300 hover:text-white hover:bg-gray-700 px-4 py-3 rounded-lg transition-all duration-200"
-                >
-                  <span>{link.icon}</span>
-                  <span>{link.name}</span>
-                </a>
-              ))}
-            </div>
-          </div>
-        )}
-      </aside>
-
-      {/* Main Content Area */}
-      <div className="flex-1 flex bg-black">
-        {/* Notes List Panel */}
-        <div className="w-1/3 border-r border-gray-800 p-6 overflow-y-auto">
-          <div className="mb-6">
-            <h1 className="text-3xl font-bold text-white mb-2">📝 Notes</h1>
-            <p className="text-gray-400">Select a note to preview</p>
+    <div className="min-h-screen bg-black flex flex-col lg:flex-row">
+      <ResponsiveNavigation profile={portfolioData.profile} links={portfolioData.links} />
+      
+      {/* Mobile spacer */}
+      <div className="lg:hidden h-16"></div>
+      
+      {/* Main Content */}
+      <main className="flex-1 flex flex-col lg:flex-row bg-black">
+        {/* Notes List */}
+        <div className="w-full lg:w-96 border-b lg:border-b-0 lg:border-r border-gray-800 bg-black">
+          <div className="p-4 lg:p-6 border-b border-gray-800">
+            <h1 className="text-xl lg:text-2xl font-bold text-white mb-2">📝 Notes</h1>
+            <p className="text-gray-400 text-sm lg:text-base">Personal thoughts and insights</p>
           </div>
           
-          {notes.length === 0 ? (
-            <div className="bg-gray-900 rounded-lg p-6 text-center border border-gray-800">
-              <div className="w-12 h-12 bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-3">
-                <span className="text-xl">📝</span>
-              </div>
-              <p className="text-gray-400 mb-1">No notes yet</p>
-              <p className="text-gray-500 text-sm">Check back later!</p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {notes.map((note) => (
-                <div
-                  key={note.id}
-                  onClick={() => handleNoteSelect(note)}
-                  className={`p-4 rounded-lg border cursor-pointer transition-all duration-200 hover:bg-gray-800 ${
-                    selectedNote?.id === note.id
-                      ? 'bg-gray-800 border-gray-600'
-                      : 'bg-gray-900 border-gray-800 hover:border-gray-700'
-                  }`}
-                >
-                  <h3 className="text-white font-semibold mb-2 truncate">{note.title}</h3>
-                  <time className="text-xs text-gray-400 bg-gray-700 px-2 py-1 rounded">
-                    {new Date(note.publishedAt).toLocaleDateString('en-US', {
-                      year: 'numeric',
-                      month: 'short',
-                      day: 'numeric'
-                    })}
-                  </time>
-                  <p className="text-gray-400 text-sm mt-2 line-clamp-2">
-                    {note.content.substring(0, 120)}...
-                  </p>
+          <div className="overflow-y-auto h-64 lg:h-[calc(100vh-200px)]">
+            {notes.length === 0 ? (
+              <div className="p-4 lg:p-6 text-center">
+                <div className="w-12 h-12 bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <span className="text-xl">📝</span>
                 </div>
-              ))}
-            </div>
-          )}
+                <p className="text-gray-400 text-sm lg:text-base mb-2">No notes available</p>
+                <p className="text-gray-500 text-xs lg:text-sm">Start writing your first note!</p>
+              </div>
+            ) : (
+              <div className="space-y-1 p-2 lg:p-4">
+                {notes.map((note) => (
+                  <div
+                    key={note.id}
+                    onClick={() => setSelectedNote(note)}
+                    className={`p-3 lg:p-4 rounded-lg cursor-pointer transition-all duration-200 ${
+                      selectedNote?.id === note.id
+                        ? 'bg-gray-800 border border-gray-700'
+                        : 'hover:bg-gray-900 border border-transparent'
+                    }`}
+                  >
+                    <h3 className="font-medium text-white text-sm lg:text-base mb-2 line-clamp-2">{note.title}</h3>
+                    <p className="text-gray-400 text-xs lg:text-sm mb-2 line-clamp-3">
+                      {note.content.replace(/[#*`\n]/g, ' ').substring(0, 100)}...
+                    </p>
+                    <div className="text-xs text-gray-500">
+                      {new Date(note.publishedAt).toLocaleDateString('en-US', {
+                        year: 'numeric',
+                        month: 'short',
+                        day: 'numeric'
+                      })}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
 
-        {/* Note Preview Panel */}
-        <div className={`flex-1 flex flex-col ${isFullscreen ? 'fixed inset-0 z-50 bg-black' : ''}`}>
+        {/* Note Content */}
+        <div className="flex-1 flex flex-col bg-black">
           {selectedNote ? (
             <>
-              {/* Preview Header */}
-              <div className="p-6 border-b border-gray-800 flex items-center justify-between">
-                <div>
-                  <h2 className="text-2xl font-bold text-white mb-1" style={{ fontFamily: 'Merriweather, serif' }}>
-                    {selectedNote.title}
-                  </h2>
-                  <time className="text-sm text-gray-400">
-                    📅 Published on {new Date(selectedNote.publishedAt).toLocaleDateString('en-US', {
+              <div className="p-4 lg:p-6 border-b border-gray-800 flex items-center justify-between">
+                <div className="flex-1 min-w-0">
+                  <h1 className="text-lg lg:text-2xl font-bold text-white mb-2 line-clamp-2">{selectedNote.title}</h1>
+                  <div className="text-sm text-gray-400">
+                    Published on {new Date(selectedNote.publishedAt).toLocaleDateString('en-US', {
                       year: 'numeric',
                       month: 'long',
                       day: 'numeric'
                     })}
-                  </time>
+                  </div>
                 </div>
-                <div className="flex items-center space-x-2">
-                  <button
-                    onClick={toggleFullscreen}
-                    className="p-2 text-gray-400 hover:text-white hover:bg-gray-800 rounded-lg transition-colors duration-200"
-                    title={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
-                  >
-                    {isFullscreen ? (
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                      </svg>
-                    ) : (
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
-                      </svg>
-                    )}
-                  </button>
-                  {isFullscreen && (
-                    <button
-                      onClick={toggleFullscreen}
-                      className="px-3 py-1 text-sm text-gray-400 hover:text-white border border-gray-700 hover:border-gray-600 rounded transition-colors duration-200"
-                    >
-                      ESC
-                    </button>
-                  )}
-                </div>
+                
+                <button
+                  onClick={() => setIsFullscreen(true)}
+                  className="lg:hidden ml-4 text-gray-400 hover:text-white"
+                  title="Fullscreen"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+                  </svg>
+                </button>
               </div>
-
-              {/* Preview Content */}
-              <div className="flex-1 p-6 overflow-y-auto">
-                <div className="prose prose-invert prose-lg max-w-none" style={{ fontFamily: 'Merriweather, serif' }}>
+              
+              <div className="flex-1 overflow-y-auto p-4 lg:p-6">
+                <div className="prose prose-invert max-w-none">
                   <ReactMarkdown>{selectedNote.content}</ReactMarkdown>
                 </div>
               </div>
@@ -254,16 +187,16 @@ export default function Notes() {
           ) : (
             <div className="flex-1 flex items-center justify-center">
               <div className="text-center">
-                <div className="w-20 h-20 bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <span className="text-3xl">📝</span>
+                <div className="w-16 h-16 bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <span className="text-2xl">📖</span>
                 </div>
-                <p className="text-gray-400 text-xl mb-2">Select a note to preview</p>
-                <p className="text-gray-500">Choose from the list on the left</p>
+                <p className="text-gray-400 text-lg lg:text-xl mb-2">Select a note to read</p>
+                <p className="text-gray-500 text-sm lg:text-base">Choose from the list on the {window.innerWidth >= 1024 ? 'left' : 'top'}</p>
               </div>
             </div>
           )}
         </div>
-      </div>
+      </main>
     </div>
   );
 }

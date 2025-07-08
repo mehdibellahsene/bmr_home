@@ -72,6 +72,11 @@ export interface ILearning extends Document {
   description: string;
   type: string;
   date: string;
+  links?: Array<{
+    title: string;
+    url: string;
+    description?: string;
+  }>;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -82,6 +87,11 @@ const LearningSchema = new Schema<ILearning>({
   description: { type: String, required: true },
   type: { type: String, required: true },
   date: { type: String, required: true },
+  links: [{
+    title: { type: String, required: true },
+    url: { type: String, required: true },
+    description: { type: String, default: '' },
+  }],
 }, {
   timestamps: true,
 });

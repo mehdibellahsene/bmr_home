@@ -50,6 +50,7 @@ export async function PUT(
       description: body.description,
       type: body.type,
       date: body.date,
+      links: body.links || [],
     });
 
     if (!updatedLearning) {
